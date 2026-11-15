@@ -43,4 +43,4 @@ Die Original-Excel wird weder benötigt noch mitgeliefert. Niemals in dieses Rep
 git config core.hooksPath .githooks
 ```
 
-Referenzwerte in `reference/cases.csv` sind ausschließlich die vorgegebenen Zahlen und daraus skalierte Fälle; keine Arbeitsmappe oder internen Metadaten. Das Repository bleibt privat. Herstellerprodukte und ihre Lizenzen werden nicht mitverteilt.
+Referenzwerte in `reference/cases.csv` sind ausschließlich die vorgegebenen Zahlen und daraus skalierte Fälle; keine Arbeitsmappe oder internen Metadaten. Herstellerprodukte und ihre Lizenzen werden nicht mitverteilt.

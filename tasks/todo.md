@@ -55,3 +55,21 @@ Routing: hard, current GPT-6/high. CATIA research (id: /root/catia_entry_researc
 Independent direct-entry review found no production must-fix. Its test-harness hang concern was fixed: every cross-process text/check/click/close message uses SendMessageTimeoutW with explicit 5-second bounds and cleanup terminates only the spawned test process if needed. Native Windows execution remains pending CI.
 
 Direct-entry result: commit `9627bab3a971a91d3b205ff05b73b64d208f3627` pushed to the same branch. CI43726095118 passed all four jobs, including real Win32 UI outside NX and actual generated CATScript controlled-I/O workflows. All five local/CI package hashes match; artifact uploads0. Unpacked final sources passed21tests and freshness check. CAD host integration, ctypes/engine availability there, import/registration, licenses and real workstation setup remain untested. Final documentation records these results and qualifies both additional user-supplied research links by version/source.
+
+
+# Main branch and publication audit
+
+Context: owner explicitly requested main/default and public visibility after a complete confidentiality review. Snapshot: only featurebranch/default existed; no master/main, tags, releases, forks, PRs or issues. Preserve all history and other branches; no forced updates or unrelated rights/deployments/releases.
+
+Routing: hard; current GPT-6/high. Independent publication audit delegated to /root/publication_review; primary handles remote logs, documentation and serialized Git/API mutations. Constraints: full historical blob/metadata scan, workbook exclusion, visibility remains private while any disclosure decision is pending.
+
+- [x] Inventory local/remote refs and inspect every historical commit/tree/blob.
+- [x] Inspect all Actions logs, artifacts and repository metadata/settings.
+- [x] Create main from the verified head and update current download links; preserve feature branch.
+- [ ] Run checks and push main; confirm its CI, then set main default.
+- [ ] Resolve historical personal author-email disclosure before public visibility.
+- [ ] Recheck remote state and publish only if the audit and explicit disclosure decision permit it.
+
+Finding: historical commits contain the owner's personal author/committer email, which is not listed on the public profile. No credential is implied, but publication is held pending the owner's disclosure choice. New commits use the GitHub noreply identity locally; no historical rewrite or promise to purge cached GitHub objects has been made.
+
+Remote audit snapshot: all5 Actions runs /17 job logs (779765 bytes) downloaded and scanned locally;0 artifacts, releases, tags, issues, PRs, deployments, hooks, repository secret names, variables or environments. Path-pattern hits in JSON are GitHub API /users/... URLs, not workstation filesystem paths; reviewed as false positives. No employer or credential matches in metadata/logs. No private raw audit files are committed.

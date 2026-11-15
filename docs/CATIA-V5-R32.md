@@ -10,7 +10,7 @@ Die bequemere zusammenhängende UserForm bleibt als [optionale Ausbauanleitung](
 
 ## 1. Dateien beziehen und entpacken
 
-1. Mit Tims Konto das [private Repository auf `feat/excel-compatible-source-preview`](https://github.com/TimKleindick/cad-embossing-wrinkle-calculator/tree/feat/excel-compatible-source-preview) öffnen.
+1. Das [Repository auf dem Hauptbranch main](https://github.com/TimKleindick/cad-embossing-wrinkle-calculator/tree/main) öffnen. Bei noch privater Sichtbarkeit mit dem berechtigten GitHub-Konto anmelden.
 2. **Code > Download ZIP** anklicken und lokal speichern, zum Beispiel unter `C:\CAD-Test\Wrinkle`.
 3. Im Windows-Explorer **Alle extrahieren…** verwenden. Den entpackten Hauptordner und darin **`ready-to-run`** öffnen. Nicht den ZIP-Inhalt direkt registrieren.
 4. Die Datei muss exakt **`CATIA_WrinkleCalculator.CATScript`** heißen. Dateiendungen einblenden; `.CATScript.txt` ist falsch. Die erste Zeile muss `Language="VBSCRIPT"` sein. Alternativ nur diese eine Datei über GitHubs **Download raw file** beziehen; sie benötigt keine Begleitdateien.
