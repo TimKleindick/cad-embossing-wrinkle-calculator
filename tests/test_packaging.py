@@ -4,6 +4,7 @@ import unittest
 import zipfile
 from tools.package_preview import build_preview, check_payload, validate_archive, audit_index, PACKAGE_FILES
 import subprocess
+from unittest import mock
 
 class PackagingTests(unittest.TestCase):
     def test_only_exact_allowlist_is_packed_and_manifest_checksums_are_emitted(self):
@@ -73,5 +74,24 @@ class PackagingTests(unittest.TestCase):
                         info=zipfile.ZipInfo(name);info.external_attr=0o100644 << 16
                         z.writestr(info,data)
                 with self.assertRaises(ValueError): validate_archive(archive)
+
+
+    def test_package_bytes_do_not_depend_on_zip_creator_platform(self):
+        # Python's ZipInfo defaults to different creator systems on Windows/Unix.
+        # Vary that real dependency default; package contents must stay identical.
+        real_info=zipfile.ZipInfo
+        class WindowsDefaultInfo(real_info):
+            def __init__(self,*args,**kwargs):
+                super().__init__(*args,**kwargs)
+                self.create_system=0
+        with tempfile.TemporaryDirectory() as tmp:
+            root=pathlib.Path(tmp)/'repo';root.mkdir()
+            for name in PACKAGE_FILES:
+                p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('safe source\n')
+            one,two=pathlib.Path(tmp)/'unix.zip',pathlib.Path(tmp)/'windows.zip'
+            build_preview(root,one,'a'*40)
+            with mock.patch.object(zipfile,'ZipInfo',WindowsDefaultInfo):
+                build_preview(root,two,'a'*40)
+            self.assertEqual(one.read_bytes(),two.read_bytes())
 
 if __name__=='__main__': unittest.main()

@@ -83,6 +83,7 @@ def build_preview(root, output, revision):
         with zipfile.ZipFile(output,'x',compression=zipfile.ZIP_DEFLATED) as archive:
             for name,data in contents.items():
                 info=zipfile.ZipInfo(name,date_time=(1980,1,1,0,0,0))
+                info.create_system=3  # Stable POSIX creator metadata on every build host.
                 info.compress_type=zipfile.ZIP_DEFLATED
                 info.external_attr=0o100644 << 16
                 archive.writestr(info,data)
