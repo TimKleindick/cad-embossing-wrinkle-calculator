@@ -40,9 +40,9 @@ Routing: hard; current GPT-6 agent, high reasoning. CATIA interface research del
 - [x] Implement generated native Windows dialog in a self-contained NX Python journal.
 - [x] Implement self-contained CATScript using native InputBox/MsgBox and invariant parsing.
 - [x] Verify generated-file freshness, same reference calculations and safe packaging.
-- [ ] Execute actual Windows dialog automation and actual CATScript workflow source in CI.
+- [x] Execute actual Windows dialog automation and actual CATScript workflow source in CI.
 - [x] Rewrite detailed guides around delivered entry files; retain optional designer guides.
-- [ ] Review, Conventional Commit, push same branch, inspect CI and artifact contents.
+- [x] Review, Conventional Commit, push same branch, inspect CI and artifact contents.
 
 ## Direct-entry review
 
@@ -53,3 +53,5 @@ Verification before push: 21 local tests pass (new four tests first failed becau
 Routing: hard, current GPT-6/high. CATIA research (id: /root/catia_entry_research), source/security review (id: /root/source_security_review); primary handles code, docs and serialized Git operations. Dedicated commit agent skipped to keep one Git owner.
 
 Independent direct-entry review found no production must-fix. Its test-harness hang concern was fixed: every cross-process text/check/click/close message uses SendMessageTimeoutW with explicit 5-second bounds and cleanup terminates only the spawned test process if needed. Native Windows execution remains pending CI.
+
+Direct-entry result: commit `9627bab3a971a91d3b205ff05b73b64d208f3627` pushed to the same branch. CI43726095118 passed all four jobs, including real Win32 UI outside NX and actual generated CATScript controlled-I/O workflows. All five local/CI package hashes match; artifact uploads0. Unpacked final sources passed21tests and freshness check. CAD host integration, ctypes/engine availability there, import/registration, licenses and real workstation setup remain untested. Final documentation records these results and qualifies both additional user-supplied research links by version/source.
