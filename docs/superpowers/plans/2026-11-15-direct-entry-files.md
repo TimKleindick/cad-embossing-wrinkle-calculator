@@ -1,0 +1,14 @@
+# Direct entry files implementation plan
+
+Goal: Tim downloads two complete source files and starts them through each CAD's journal/macro commands. No manual DLX/UserForm/CATVBA construction on the default path. No geometry or workbook input.
+
+Architecture: generate tracked ready-to-run files from the existing pure Python/VBA kernels plus small UI adapters. NX uses a Win32 dialog template built in Python with standard ctypes, owned by the foreground NX window; this is a Windows dialog inside the NX journal, not Block Styler. CATIA uses documented CATScript/CATMain and native InputBox/MsgBox, with no Forms COM construction. Keep existing designer alternatives separate.
+
+Primary sources: Microsoft DialogBoxIndirectParamW/DLGTEMPLATE and Python ctypes document the dynamic Windows dialog mechanism; IBM CATIA APARs HC82294/HE03301 document CATScript header and macro-directory steps. These establish interfaces, not an R32/NX2412 integration pass. No additional license SKU is asserted.
+
+1. `tests/test_entries.py`: strict decimal parsing, template control contract, generated single-file execution away from repository, stale generated-file detection. RED first. `cad/nx/win32_dialog.py` builds actual controls and calls original calculate; `tools/build_entries.py` embeds unchanged kernels and removes only VBA export metadata/duplicate Option Explicit. Output `ready-to-run/NX_WrinkleCalculator.py` and `ready-to-run/CATIA_WrinkleCalculator.CATScript`.
+2. `cad/catia/entry.vbs`: input/confirmation/result abstraction, deterministic decimal parser and full native implementation; `cad/catia/test_entry.vbs` runs real orchestration with controlled I/O, including cancel/invalid/optional thickness, plus existing shared core references. Windows runner tests actual generated CATScript after removing only its CATIA language metadata.
+3. `tools/test_windows_dialog.py`: launch the single generated NX file from an otherwise empty folder, create the real Win32 dialog, populate controls, click Calculate, inspect output, test invalid input clears prior success, and close. A separate process timeout protects against a hung dialog. This is Windows GUI execution, not CAD UI integration.
+4. Extend explicit package list and CI with generated freshness, Windows source/workflow tests and actual dialog test; preserve all workbook and stage guards. Generate files before staging; CI checks freshness, never patches the checkout.
+5. Rewrite NX/CATIA guides for exact entry files, download/extract/start/settings/dependencies/reference/error/cancel steps. Preserve previous designer guides as optional advanced routes. README makes remaining actions per CAD visible.
+6. Run full local suite, independent math check, stage audit and actual unpacked package tests. Review and push same branch; inspect Windows/Linux CI and final package hashes. Never claim NX/CATIA runtime, macro import, licensing or workstation install tested.

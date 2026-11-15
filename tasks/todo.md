@@ -29,3 +29,27 @@ Review findings handled: region-independent CSV fixture parsing (en-US and de-DE
 Subagents: independent numerics (id: /root/numerical_review), source/security review (id: /root/source_security_review). Primary handled implementation, documentation and commit. No separate commit agent: serialized Git ownership avoids overlapping mutations. Model/effort: current GPT-6 agent, high reasoning; legacy model names from routing skill unavailable. Complexity: hard.
 
 Remote: first verified source commit `72190950f290f3ec6bb4c09453f72ca5b804bcf1` pushed; [CI evidence](https://github.com/TimKleindick/cad-embossing-wrinkle-calculator/actions/runs/43723275112) succeeded. Repository stays private. As the first branch in an empty repository, GitHub selected the feature branch as default; `main` does not yet exist. No merge, tag or release performed. Final documentation commit records this evidence and is rechecked by CI.
+
+# Directly runnable CAD entry files
+
+Context: Tim wants to open prepared entry files, without manually drawing forms or creating binary projects. Continue the same isolated branch, preserve the pure cores and Excel semantics. Detailed CAD-only steps, download/extract, settings, verified dependencies, inputs, expected results and troubleshooting are required.
+
+Routing: hard; current GPT-6 agent, high reasoning. CATIA interface research delegated to /root/catia_entry_research. Primary owns implementation/Git; independent source review follows. Constraints from lessons: inline unchanged kernels, disclose host limits, audit staged bytes and only exact source paths in packages.
+
+- [x] Record direct-entry design and tests; observe missing behavior failures.
+- [x] Implement generated native Windows dialog in a self-contained NX Python journal.
+- [x] Implement self-contained CATScript using native InputBox/MsgBox and invariant parsing.
+- [x] Verify generated-file freshness, same reference calculations and safe packaging.
+- [ ] Execute actual Windows dialog automation and actual CATScript workflow source in CI.
+- [x] Rewrite detailed guides around delivered entry files; retain optional designer guides.
+- [ ] Review, Conventional Commit, push same branch, inspect CI and artifact contents.
+
+## Direct-entry review
+
+Changed: generated self-contained NX Python/Win32 journal and CATScript; native dialog adapters; strict locale-independent parsers; generation/freshness tool; standalone and Windows UI/workflow tests; explicit source allowlist; CI and detailed workstation guides. Pure calculation kernels have no diff.
+
+Verification before push: 21 local tests pass (new four tests first failed because entry functionality was absent), Python compileall passes, independent golden-section/Simpson check passes, generated freshness passes, 32-file allowlisted package validates. Windows actual-dialog and generated CATScript workflow tests require the next CI run; CAD integration remains untested. No Excel files, binary projects or geometry generation.
+
+Routing: hard, current GPT-6/high. CATIA research (id: /root/catia_entry_research), source/security review (id: /root/source_security_review); primary handles code, docs and serialized Git operations. Dedicated commit agent skipped to keep one Git owner.
+
+Independent direct-entry review found no production must-fix. Its test-harness hang concern was fixed: every cross-process text/check/click/close message uses SendMessageTimeoutW with explicit 5-second bounds and cleanup terminates only the spawned test process if needed. Native Windows execution remains pending CI.

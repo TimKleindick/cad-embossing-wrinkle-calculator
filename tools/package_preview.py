@@ -11,11 +11,15 @@ import zipfile
 PACKAGE_FILES = (
     'README.md','docs/MATHEMATICS.md','docs/NX2412.md','docs/CATIA-V5-R32.md',
     'docs/VALIDATION.md','docs/RELEASES.md','reference/cases.csv',
+    'docs/NX2412-BlockStyler-optional.md','docs/CATIA-V5-R32-UserForm-optional.md',
     'wrinkle/__init__.py','wrinkle/core.py','wrinkle/__main__.py',
     'cad/nx/wrinkle_dialog.py','cad/catia/WrinkleCore.bas','cad/catia/Launch.bas',
     'cad/catia/UserForm-code.txt','cad/catia/test_core.vbs',
     'tools/__init__.py','tools/run_vbscript_tests.py','tools/package_preview.py','tools/independent_check.py',
-    'tests/test_core.py','tests/test_packaging.py','tests/test_cli.py',
+    'tests/test_core.py','tests/test_packaging.py','tests/test_cli.py','tests/test_entries.py',
+    'cad/nx/win32_dialog.py','cad/catia/entry.vbs','cad/catia/test_entry.vbs',
+    'tools/build_entries.py','tools/test_windows_dialog.py',
+    'ready-to-run/NX_WrinkleCalculator.py','ready-to-run/CATIA_WrinkleCalculator.CATScript',
 )
 FORBIDDEN = re.compile(r'\.(?:xls[a-z0-9]*|xlt[a-z0-9]*|xla[a-z0-9]*|ods|ots|numbers|csv)(?:\.|$)',re.I)
 MAX_BYTES = 2_000_000

@@ -31,3 +31,12 @@ Das 0,1-%-Längenziel ist beim Excel-Standardfall nicht erreicht: +0,434593 %. K
 **Offen/ungetestet:** NX 2412 Laufzeit und Python-Integration, Block-Styler-Designer und DLX-Import, CATIA V5 R32, VBA-Kompilierung/Forms/CATVBA-Speichern und erneutes Importieren, beide Lizenzkonfigurationen und reale Arbeitsplatzinstallation. Die native UI wurde nicht angezeigt. Kein CAD-Binärpaket geliefert. Der Release-Workflow wurde nicht publizierend ausgeführt. Windows Script Host kann auf Unternehmensgeräten deaktiviert oder nicht installiert sein; keine Richtlinien umgehen.
 
 Abnahmefolgen und zu protokollierende Werte stehen in den beiden Arbeitsplatzanleitungen. Erst deren tatsächlicher Durchlauf darf den CAD-Status ändern.
+
+
+## Erweiterung: vorbereitete Ein-Datei-Einstiege
+
+Die reinen Rechenkerne `wrinkle/core.py` und `cad/catia/WrinkleCore.bas` bleiben unverändert. `tools/build_entries.py` bindet sie in `ready-to-run/NX_WrinkleCalculator.py` und `ready-to-run/CATIA_WrinkleCalculator.CATScript` ein. Neue vier Tests wurden zuerst rot beobachtet (fehlende Einstiegskomponenten), danach grün. Gesamtlauf jetzt **21 lokale Tests**; Python-Syntaxprüfung, unabhängiger mathematischer Gegencheck und Generierungsprüfung bestanden. Der NX-Einstieg wurde als einzige Datei in einen leeren Ordner kopiert und seine Rechnung mit isoliertem Python ausgeführt.
+
+Der nächste Windows-CI-Lauf führt die erzeugte CATScript-Quelle nach Entfernung allein ihres CATIA-Sprachheaders mit kontrollierter Ein-/Ausgabe aus: Dezimalpunkt/-komma, drei Ergebnis-Seiten, ungültige Eingaben, leere Eingaben und Abbrechen. Zusätzlich wird der tatsächliche generierte Windows-Dialog in einem separaten Python-Prozess aus einem leeren Verzeichnis erzeugt und bedient. Dieser Test verwendet kein NX. Dessen tatsächlicher Status wird nach dem Push im Abschluss geprüft.
+
+Die Paket-Positivliste umfasst jetzt 32 ausdrücklich benannte Quellen einschließlich der beiden Startdateien und der optionalen älteren Designer-Anleitungen. Es werden keine DLL, EXE, DLX, FRX oder CATVBA geliefert. Die detaillierten Hauptanleitungen beschreiben Download/Entpacken, Startdatei, konkrete CAD-Menüs, erforderliche Hostfunktionen, Sollwerte, Abbruch und Fehlerdiagnose. Native Windows-Dialogausführung und kontrollierte VBScript-Ausführung ersetzen keine NX-/CATIA-Integration. Lizenz-/Engine-Verfügbarkeit und konkrete Hostmenüs bleiben dort offengelegt ungetestet.

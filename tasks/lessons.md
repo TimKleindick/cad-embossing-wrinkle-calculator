@@ -5,3 +5,5 @@
 - **Packaging sensitive-source work -> inspect staged blob bytes and pack an explicit file list -> exercise disguised containers, symlinks, a clean working copy over an unsafe index, and post-manifest tampering.** File extensions and .gitignore alone are insufficient.
 
 - **Matching source archive hashes across Windows and Unix -> normalize checkout line endings and ZIP creator system as well as entry order/time/mode -> compare CI hashes and test platform-default metadata variation.**
+
+- **Delivering a CAD entry as one file -> generate it from the tested unchanged kernel and UI adapter -> check freshness in CI and execute the copied file from an otherwise empty directory.** This catches hidden source-tree/import dependencies without pretending to test the CAD host.

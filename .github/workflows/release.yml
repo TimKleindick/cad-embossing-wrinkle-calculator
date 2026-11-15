@@ -38,9 +38,11 @@ jobs:
           if ($env:PREVIEW_TAG -cnotmatch '^v[0-9]+\.[0-9]+\.[0-9]+-source-preview\.[0-9]+$') { throw 'Preview tag required' }
           $sha = gh api "repos/$env:GITHUB_REPOSITORY/commits/$env:PREVIEW_TAG" --jq '.sha'
           if ($LASTEXITCODE -ne 0 -or $sha -cne $env:GITHUB_SHA) { throw 'Existing tag must point to this main commit' }
+      - run: python tools/build_entries.py --check
       - run: python tools/package_preview.py audit
       - run: python -m unittest discover -s tests -v
       - run: python tools/run_vbscript_tests.py
+      - run: python tools/test_windows_dialog.py
       - run: python tools/package_preview.py build
       - run: python tools/package_preview.py verify
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

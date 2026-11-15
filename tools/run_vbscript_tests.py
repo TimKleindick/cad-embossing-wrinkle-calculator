@@ -6,11 +6,11 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 
 def main():
-    core = (ROOT / 'cad/catia/WrinkleCore.bas').read_text(encoding='utf-8')
-    # Only export metadata is removed; no semantic translation.
+    core = (ROOT / 'ready-to-run/CATIA_WrinkleCalculator.CATScript').read_text(encoding='ascii')
+    # Only CATIA language metadata and duplicate Option Explicit are removed; no semantic translation.
     source = '\n'.join(line for line in core.splitlines()
-                       if not line.startswith('Attribute ') and line != 'Option Explicit')
-    tests = (ROOT / 'cad/catia/test_core.vbs').read_text(encoding='utf-8')
+                       if line != 'Language="VBSCRIPT"' and line != 'Option Explicit')
+    tests = (ROOT / 'cad/catia/test_core.vbs').read_text(encoding='utf-8')+'\n'+(ROOT/'cad/catia/test_entry.vbs').read_text(encoding='ascii')
     with tempfile.TemporaryDirectory() as tmp:
         runner = Path(tmp) / 'core_tests.vbs'
         command=['cscript.exe','//nologo',str(runner),str(ROOT/'reference/cases.csv')]

@@ -1,52 +1,94 @@
-# CATIA V5 R32: Arbeitsplatztest
+# CATIA V5 R32: vorbereitete Datei starten
 
-**Status: VBA-Quellen und UserForm-Code; VBA-Kompilierung, CATIA-Laufzeit, native UI-Importe, Lizenzen und reale Installation sind auf diesem Mac ungetestet.** Eine `.catvba` ist ein vom Zielhost erstelltes Projekt, keine umbenannte Textdatei. Eine zuverlässige CATVBA-/FRX-Erzeugung ist hier nicht möglich; deshalb werden keine solchen Binärdateien vorgetäuscht.
+## Lieferumfang und Status
 
-## Voraussetzungen und Quellen
+Startdatei: **`ready-to-run/CATIA_WrinkleCalculator.CATScript`**. Sie enthält den unveränderten VBA/VBScript-kompatiblen Kern und den vollständigen Makroeinstieg. Native **InputBox-/MsgBox-Dialoge** fragen die Werte ab und zeigen drei Ergebnis-Seiten. Kein CATVBA-Projekt, keine UserForm-Erstellung, kein Import von BAS-/FRM-Dateien, keine Excel-Installation und kein externer Python-Aufruf erforderlich.
 
-Windows-Arbeitsplatz mit CATIA V5 R32 und installiertem/erlaubtem VBA-Editor samt Microsoft Forms. Die genaue Verfügbarkeit von VBA und Makroausführung mit IT/Lizenzadministration prüfen. Keine Excel-Installation, kein Solver und kein Excel-Objektmodell nötig. Makros nach der Unternehmensrichtlinie freigeben; keine globalen Sicherheitsrichtlinien abschalten.
+Die bequemere zusammenhängende UserForm bleibt als [optionale Ausbauanleitung](CATIA-V5-R32-UserForm-optional.md). Für dynamische CATVBA-UserForms aus einem reinen Skript ohne Formular-/Projektabhängigkeit wurde kein belastbar dokumentierter CATIA-Weg gefunden. Daher ist die vorbereitete Folge nativer Dialoge die konkrete Standardalternative. Es wird keine allgemeine technische Unmöglichkeit behauptet.
 
-`cad/catia/WrinkleCore.bas` ist der reine Rechenkern. Er nutzt nur VBA-Arithmetik, Variant-Arrays und Standardfunktionen; keine CATIA-/Excel-Objekte. `Launch.bas` öffnet das Formular. `UserForm-code.txt` ist **nur einzufügender Code**, kein importierbares `.frm` oder `.frx`.
+**CATIA V5 R32, Makroregistrierung, tatsächliche Eingabe-/Ausgabedialoge im Host, Skript-Engine, Lizenzen und reale Arbeitsplatzinstallation bleiben ungetestet.** Windows-CI führt den tatsächlichen Makro-Quellcode mit kontrollierter Ein-/Ausgabe aus; sie startet CATIA nicht.
 
-Die Windows-CI führt denselben Kern nach Entfernung der Exportzeile `Attribute VB_Name` im VBScript-Host aus. Das prüft Zahlen und gemeinsame Sprachsemantik, **keine VBA-Kompilierung, keinen Forms-Designer und keinen CATIA-Import**. Windows Script Host ist eine Testabhängigkeit, keine Laufzeitabhängigkeit des späteren CATVBA-Prototyps. Falls WSH durch Unternehmensrichtlinie fehlt, nicht aktivieren; den Kern im erlaubten VBA-Host prüfen.
+## 1. Dateien beziehen und entpacken
 
-## 1. Echtes CATVBA-Projekt im Host erstellen
+1. Mit Tims Konto das [private Repository auf `feat/excel-compatible-source-preview`](https://github.com/TimKleindick/cad-embossing-wrinkle-calculator/tree/feat/excel-compatible-source-preview) öffnen.
+2. **Code > Download ZIP** anklicken und lokal speichern, zum Beispiel unter `C:\CAD-Test\Wrinkle`.
+3. Im Windows-Explorer **Alle extrahieren…** verwenden. Den entpackten Hauptordner und darin **`ready-to-run`** öffnen. Nicht den ZIP-Inhalt direkt registrieren.
+4. Die Datei muss exakt **`CATIA_WrinkleCalculator.CATScript`** heißen. Dateiendungen einblenden; `.CATScript.txt` ist falsch. Die erste Zeile muss `Language="VBSCRIPT"` sein. Alternativ nur diese eine Datei über GitHubs **Download raw file** beziehen; sie benötigt keine Begleitdateien.
+5. Den Quell-Commit aus der GitHub-Dateiansicht für das spätere Protokoll notieren. Ein gebautes Source-Preview-ZIP darf ebenfalls vollständig entpackt werden; der gleiche Unterordner enthält die Startdatei. Für diesen Auftrag wurde kein Release veröffentlicht.
 
-1. CATIA starten, optional ein leeres Testteil öffnen. Keine produktiven Dokumente nötig.
-2. Über **Tools > Macro > Macros** den Makrodialog öffnen und **Macro libraries** wählen. Den Bibliothekstyp **VBA Projects** wählen und ein neues Projekt `WrinkleSourcePreview.catvba` im lokalen Testordner erstellen/registrieren. Englische UI-Begriffe dienen als Suchbegriffe; Rolle/Sprache kann abweichen.
-3. Den **Visual Basic Editor** über Tools > Macro öffnen. Im neu erstellten Projekt **File > Import File** aufrufen und `WrinkleCore.bas` sowie `Launch.bas` importieren. Im Projekt müssen die Module exakt `WrinkleCore` und `Launch` erscheinen. Es dürfen keine doppelten/nummerierten Module entstehen.
-4. Unter **Insert > UserForm** ein Formular erstellen und dessen `(Name)` auf **`frmWrinkle`** setzen. Erst das von CATIA gespeicherte Projekt ist eine echte `.catvba`.
+Keine Original-Excel in das Repository oder Testprotokoll kopieren. Die Makrodatei lädt keine Arbeitsmappe und schreibt keine Ergebnisdatei.
 
-Microsoft beschreibt den [Import von BAS-/FRM-/CLS-Komponenten](https://learn.microsoft.com/en-us/office/vba/language/reference/user-interface-help/import-file-dialog-box) und das [File-Menü des VBA-Editors](https://learn.microsoft.com/en-us/office/vba/language/reference/user-interface-help/file-menu). Ob diese Funktionen in genau dieser CATIA-Installation verfügbar sind, ist vor Ort zu prüfen. CATIA-spezifische Referenz ist die installierte R32 Automation/VBA-Hilfe beziehungsweise [Dassault Help](https://help.3ds.com/) (Zugang erforderlich).
+## 2. Voraussetzungen und Einstellungen
 
-## 2. UserForm exakt aufbauen
+- Windows-Arbeitsplatz mit **CATIA V5 R32** und erlaubter Skript-Makroausführung. Eine konkrete zusätzliche Lizenz-SKU ist anhand der verfügbaren Quellen nicht bestätigt; Lizenz-/Makrofreigaben vor Ort mit IT prüfen.
+- Funktionierende **VBScript-Skript-Engine** in der unterstützten CATIA-/Windows-Konfiguration. Das Makro ruft weder `wscript.exe` noch `cscript.exe` auf; diese werden nur für externe CI-Tests benutzt.
+- Kein VBA-Editor und keine Microsoft-Forms-Installation für diesen Startweg vorgesehen. Keine Makro-Sicherheitsrichtlinie global abschalten und keine externen COM-Form-Klassen registrieren.
+- Microsoft kündigt VBScript ab und führt es als Windows Feature on Demand. Fehlt die Engine, ist dies eine zu klärende Installations-/IT-Frage, kein Anlass, Unternehmensrichtlinien zu umgehen. Die konkrete R32-/Windows-Kombination wurde hier nicht getestet.
 
-Formulargröße etwa Width 720, Height 540 Punkte; Caption `Faltenrechner - Source Preview - CAD ungetestet`. Toolbox-Klassen sind die normalen Microsoft-Forms-Controls. Labels für Eingabefelder mit mm ergänzen.
+## 3. Genau im CAD registrieren und starten
 
-| Name | Typ | Eigenschaften / Position (Left, Top, Width, Height) |
-|---|---|---|
-| txtL1 | TextBox | (180, 15, 100, 22), Label `Abgewickelte Laenge l1 [mm]` |
-| txtL2 | TextBox | (180, 45, 100, 22), Label `Projizierte Breite l2 [mm]` |
-| chkThickness | CheckBox | (15, 80, 260, 22), Caption `Dickenabschaetzung aktivieren` |
-| txtThickness | TextBox | (180, 110, 100, 22), Label `Wanddicke [mm]` |
-| cmdCalculate | CommandButton | (320, 15, 160, 28), Caption `Berechnen` |
-| cmdClose | CommandButton | (500, 15, 120, 28), Caption `Schliessen`, Cancel=True |
-| txtResult | TextBox | (15, 155, 675, 340), MultiLine=True, ScrollBars=3 (Both), WordWrap=False, Locked=True, TabStop=False |
+1. CATIA V5 R32 normal starten. Der Rechner verwendet keine Dokumentobjekte; produktive CATParts/CATProducts sind nicht nötig. Falls die lokale Oberfläche ein Dokument zum Aktivieren der Menübefehle verlangt, ein neues leeres Testteil verwenden.
+2. **Tools > Macro > Macros…** öffnen (je nach Oberfläche **Extras > Makro > Makros…**).
+3. Im Makrodialog **Macro libraries…** anklicken.
+4. Bei **Library type / Bibliothekstyp** **Directories / Verzeichnisse** wählen. **Nicht VBA Projects** wählen.
+5. **Add existing library… / Vorhandene Bibliothek hinzufügen…** wählen und genau den entpackten Ordner **`ready-to-run`** auswählen, in dem die `.CATScript` liegt. Mit **OK** bestätigen.
+6. Mit **Close / Schliessen** zur Makroliste zurückkehren. Falls nötig die soeben registrierte Verzeichnisbibliothek auswählen.
+7. Das Makro **`CATIA_WrinkleCalculator`** beziehungsweise den vollständigen `.CATScript`-Dateinamen auswählen und **Run / Ausführen** drücken. CATIA soll dessen `CATMain` selbst aufrufen; die Datei nicht umbenennen und keinen zusätzlichen Aufruf hineinkopieren.
+8. Erwartet wird die erste Eingabebox für l1. Die Bezeichnung der Menüs und die Registrierung sind durch ältere V5-Hersteller-Supportfälle belegt; die exakte Darstellung in R32 ist ausdrücklich noch am Arbeitsplatz zu bestätigen.
 
-Den kompletten Inhalt von `UserForm-code.txt` in das Codefenster von `frmWrinkle` kopieren. Eventuell automatisch erzeugte leere Event-Prozeduren vorher entfernen, damit kein Name doppelt vorkommt. Eingaben werden mit `CDbl` nach Windows-Regionseinstellung gelesen: bei deutscher Einstellung Komma als Dezimaltrenner. Keine Tausendertrennzeichen eingeben. Die Startwerte sind ganzzahlig und unabhängig davon.
+Die Bibliotheksregistrierung ist normalerweise der einmalige Vorbereitungsschritt. Beim nächsten Test Makrodialog öffnen, dieselbe Bibliothek/Makrodatei auswählen und Run drücken. Ob die lokale R32-Konfiguration die Bibliothek über einen Neustart speichert, muss einmal überprüft werden.
 
-## 3. Kompilieren und starten
+## 4. Eingabefolge und Sollvergleich
 
-Im VBA-Editor **Debug > Compile** für das Projekt ausführen; Fehler protokollieren, keine Referenzprüfung deaktivieren. Unter **Tools > References** darf keine `MISSING`-Referenz stehen. Für diesen Prototyp keine Excel-Bibliothek hinzufügen. Projekt speichern, Editor schließen. Im Makrodialog das `Launch.CATMain` aus dem Projekt ausführen. Erwartet wird die native UserForm. Erst ein erfolgreicher Compile, Speichern, Schließen und erneutes Öffnen bestätigt die lokale Verpackbarkeit; hier wurde das nicht durchgeführt.
+1. **Abgewickelte Laenge l1**: `40`, mit OK bestätigen.
+2. **Projizierte Breite l2**: `30`, mit OK bestätigen.
+3. **Optionale Dickenabschaetzung berechnen?**: **Ja** wählen.
+4. **Optionale Wanddicke**: `2`, mit OK bestätigen.
+5. Es folgen drei mit **1/3, 2/3, 3/3** betitelte Ergebnisdialoge. Werte ablesen und jeweils mit OK weitergehen. **Strg+C** kopiert bei einer normalen Windows-Meldungsbox üblicherweise deren Text; dies am Arbeitsplatz prüfen oder Werte ins Testprotokoll übertragen.
 
-## 4. Numerik und UI abnehmen
+Alle Eingaben sind mm. Ein Punkt oder ein Komma wird eindeutig als **Dezimalzeichen** interpretiert, z.B. `40,0` und `40.0` sind gleich. Keine Tausendertrennzeichen, Einheiten oder Exponenten verwenden; mehrdeutige gemischte Schreibweisen werden abgelehnt. Die Ausgabe folgt der Windows-Regionseinstellung.
 
-1. CATIA-Build/SP/HF, Windows-Version, VBA-/Forms-Verfügbarkeit, Makrofreigaben und Lizenzprüfung protokollieren.
-2. 40/30, Dicke aktiv 2: A 6,139413268; R ≈5,0322554; Höhe ≈12,2342750; φ ≈49,8407463°; Gerade je Seite ≈11,3319680 mm. Polygon ≈40,1738373; analytisch ≈40,1738725; Fehler **+0,434593 %**. Keine automatische Längenkorrektur.
-3. Form-RMS ≈0,096220; max. vertikale Abweichung ≈0,181006 mm. Dickenwerte ≈19,871805 % Kreis, ≈13,465240 % Excel-Kosinus und ≈26,930480 % korrigierter Kosinus; alle Beschriftungen kontrollieren.
-4. 30/30 liefert flach, undefinierte Radien, null Fehler. 80/60/4 verdoppelt Längen. Dicke ausgeschaltet liefert keine Dehnungszahl. Referenzen und Toleranzen siehe `reference/cases.csv` und Mathematikdokument.
-5. Leere Felder, Text, 29/30, negative Dicke bei aktivierter Option und l1>2*l2 müssen zum Fehler führen; Ergebnisfeld darf dann keinen früheren Erfolg als aktuelle Rechnung zeigen.
-6. Berechnen mehrfach, Schließen, Escape und erneutes Öffnen prüfen. Geometrie-/Dokumentstatus vor und nach vergleichen; es soll kein Objekt erzeugt oder geändert werden.
-7. Projekt speichern, CATIA schließen, frisch starten und Projekt erneut laden/ausführen. Erst diesen Schritt als erfolgreichen Import/Installation im Testprotokoll markieren.
+| Seite | Größe | Soll, ungefähr |
+|---|---|---:|
+| 1 | A | 6,139413268 mm |
+| 1 | R | 5,0322554 mm |
+| 1 | Höhe | 12,2342750 mm |
+| 1 | Winkel | 49,8407463° |
+| 1 | Gerade je Seite | 11,3319680 mm |
+| 2 | Excel-Polygonlänge | 40,1738373 mm |
+| 2 | Analytische Fitlänge | 40,1738725 mm |
+| 2 | Polygon-Längenabweichung | **+0,434593 %** |
+| 2 | Vertikale Formabweichung RMS / maximal | 0,096220 / 0,181006 mm |
+| 3 | Excel-/korrigierter Kosinusradius | 7,426529319 / 3,713264660 mm |
+| 3 | Excel-/korrigierte Kosinus-Dehnung | 13,465240 / 26,930480 % |
+| 3 | Kreisbogen-Dehnung | 19,871805 % |
 
-Für einen unabhängigen Windows-Quelltest ohne CATIA aus dem Repository-Stamm: `python tools/run_vbscript_tests.py`. Nicht per Doppelklick auf `.bas` starten. Ein erfolgreiches WSH-Ergebnis ist weiter keine CAD-Freigabe.
+Der Hinweis **`Laengenziel <0.1% NICHT erreicht`** gehört zum korrekten Excel-Standard. Es wird weiter mit 1000 Segmenten und Formfit ohne Längenbedingung gerechnet. Dehnung ist allein die stark vereinfachte `t/(2r)`-Abschätzung, keine Freigabe oder Risssicherheitsaussage.
+
+## 5. Abbruch, Fehler und weitere Testfälle
+
+- **Leer lassen oder Abbrechen** in einer Wertebox beendet den gesamten Lauf ohne Ergebnis. Eine leere Eingabe wird nicht zur Null umgewandelt. Das native InputBox-Verhalten unterscheidet leere Bestätigung und Abbrechen nicht sicher; beide sind deshalb ausdrücklich Abbruch.
+- Bei der Dickenfrage bedeutet **Nein**: rechnen ohne Dickenabschätzung. **Abbrechen** beendet alles. Bei Ja muss eine nichtleere Dicke eingegeben werden; auch hier beendet Abbrechen den Lauf.
+- Ungültige Eingaben liefern eine Fehlermeldung ohne Erfolgsseiten. Danach Makro erneut starten. Beispiele: `29/30`, `text`, negative Dicke. Unterstützt sind positive Längen 0,001..1.000.000 mm, `l2<=l1<=2*l2` und optionale Dicke 0..1.000.000 mm.
+- `30/30`, Dickenfrage Nein: flach, A/Höhe/Winkel/Fehler null, Gerade je Seite 15, Fitlänge 30 mm, Radien undefiniert, Dehnungen nicht angegeben.
+- `80/60/4`: Längen doppelt, Winkel, relative Fehler und Dehnungsabschätzungen unverändert.
+- Nach allen drei Seiten muss CATIA normal bedienbar sein. Makro erneut starten und nach l1 abbrechen; danach einmal CATIA schließen/öffnen und die Registrierung erneut prüfen. Geometrieanzahl und Dokument-Änderungsstatus sollen unverändert bleiben.
+
+## 6. Fehlerdiagnose und Protokoll
+
+| Beobachtung | Konkrete Prüfung / nächster Schritt |
+|---|---|
+| Makro erscheint nicht | Ordner statt ZIP gewählt? Bibliothekstyp Directories? Liegt die `.CATScript` direkt in diesem Ordner? Endung nicht `.txt`? |
+| Projekt-/Formularimport wird verlangt | Falscher Startweg: für diese Datei kein CATVBA-Projekt und keinen VBA-Editor verwenden. Zur Verzeichnis-Makrobibliothek wechseln. |
+| Syntax-/Headerfehler | Erste Zeile `Language="VBSCRIPT"` und komplette Raw-Datei prüfen. Quell-Commit notieren. Headerverarbeitung unter R32 ist noch nicht bestätigt. |
+| Skript-Engine nicht verfügbar / Makro durch Richtlinie blockiert | Vollständige Meldung sowie CATIA-Build/SP/HF und Windows-Version erfassen. Unterstützte Engine/IT-Freigabe prüfen lassen; keine Sicherheitseinstellungen global senken. |
+| Eingabebox verdeckt | Taskleiste/Alt+Tab und CATIA-Fokus prüfen. Frühe V5-Versionen hatten dokumentierte InputBox-Fokusprobleme; daraus wird kein Fehler in R32 abgeleitet. Modalität/Fokus sind Teil des offenen Tests. |
+| Nach Abbrechen kein Ergebnis | Vorgesehen: abbrechen/leer beendet vollständig. Erneut Run wählen. |
+| Zahl wird zurückgewiesen | Genau ein Dezimalzeichen, keine Gruppen-/Einheiten-/Exponentschreibweise; Wertebereich und l1/l2-Verhältnis prüfen. |
+| Dehnungswerte fehlen | Dickenfrage bewusst Ja wählen und Dicke eingeben. Nein bedeutet keine Schätzung, nicht Dicke null. |
+
+Protokollieren: Quell-Commit, CATIA-Build/SP/HF, Windows-Version, freigegebene Makro-/Engine-Konfiguration, tatsächlich geklickte Menüfolge, Eingaben/Ergebnisse, Abbruch und Neustarttest sowie unveränderte Dokument-/Geometriezustände. Keine Original-Excel anhängen. Erst bestandene Schritte als CAD-getestet markieren.
+
+## Quellen und Grenzen der Belege
+
+[IBM HC82294](https://www.ibm.com/support/pages/apar/HC82294) dokumentiert CATScript mit `Language="VBSCRIPT"` und `CATMain`; [IBM HE03301](https://www.ibm.com/support/pages/apar/HE03301) den Verzeichnisbibliothek-Start. Beide betreffen ältere V5-Stände, keinen Test unserer R32-Datei. [Microsoft InputBox](https://learn.microsoft.com/en-us/openspecs/microsoft_general_purpose_programming_languages/ms-vbal/64b763ff-9f5f-43cd-b247-c75557e51989) erklärt das Abbruchverhalten, [Typkonvertierung](https://learn.microsoft.com/en-us/office/vba/language/concepts/getting-started/type-conversion-functions) die Locale-Abhängigkeit normaler Konvertierungen. Unser Parser vermeidet diese Mehrdeutigkeit. [Microsofts VBScript-Status](https://learn.microsoft.com/en-us/windows/whats-new/deprecated-features-resources) betrifft die Engine-Verfügbarkeit. Maßgeblich für R32 bleiben die installierte Automation-Hilfe und [Dassault Help](https://help.3ds.com/).
