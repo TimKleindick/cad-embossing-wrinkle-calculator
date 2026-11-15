@@ -66,10 +66,19 @@ Routing: hard; current GPT-6/high. Independent publication audit delegated to /r
 - [x] Inventory local/remote refs and inspect every historical commit/tree/blob.
 - [x] Inspect all Actions logs, artifacts and repository metadata/settings.
 - [x] Create main from the verified head and update current download links; preserve feature branch.
-- [ ] Run checks and push main; confirm its CI, then set main default.
+- [x] Run checks and push main; confirm its CI, then set main default.
 - [ ] Resolve historical personal author-email disclosure before public visibility.
 - [ ] Recheck remote state and publish only if the audit and explicit disclosure decision permit it.
 
 Finding: historical commits contain the owner's personal author/committer email, which is not listed on the public profile. No credential is implied, but publication is held pending the owner's disclosure choice. New commits use the GitHub noreply identity locally; no historical rewrite or promise to purge cached GitHub objects has been made.
 
 Remote audit snapshot: all5 Actions runs /17 job logs (779765 bytes) downloaded and scanned locally;0 artifacts, releases, tags, issues, PRs, deployments, hooks, repository secret names, variables or environments. Path-pattern hits in JSON are GitHub API /users/... URLs, not workstation filesystem paths; reviewed as false positives. No employer or credential matches in metadata/logs. No private raw audit files are committed.
+
+
+## Publication review
+
+Completed: main created from verified49c9568 without losing source/history; current download links updated; featurebranch retained; main pushed and remotely set as default. Remote visibility deliberately remains private. CI43728154687 on a2b48947e51528bc80ddb971b602f1eced684020 passed. Existing21tests and generated freshness/staged source audit pass; calculation kernels and CAD source entries unchanged.
+
+Audit evidence:5initialcommits/39trees/63blobs/43paths independently examined; all5pre-transitionActions runs and17logs scanned,0artifacts/optionalstoredsurfaces. One personal author/committer email is present in all5initialcommits and historical Actions run metadata. New commits use the account's noreply identity. The owner's disclosure choice is pending; no history rewrite, force-push, deletion or public visibility action executed. This is the remaining blocker, not an automatic approval rejection.
+
+Roles: independent publication audit (/root/publication_review); primary handled remote review, docs, commits and API setting. Separate commit agent skipped for serialized Git ownership. Complexity hard; current GPT-6/high. Raw audit data stays outside Git. Recheck future logs/current remote state before any later authorized visibility change.
