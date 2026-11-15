@@ -1,0 +1,2 @@
+# Keep source-package bytes independent of checkout platform/locale.
+* text eol=lf

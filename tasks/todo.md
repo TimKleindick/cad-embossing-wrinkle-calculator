@@ -14,14 +14,16 @@ Execution constraints: keep 1000-segment polygon semantics; report fit length er
 - [x] TDD package guard with adversarial workbook/disguised ZIP/symlink cases.
 - [x] Add least-privilege CI and gated source-preview release workflow.
 - [x] Review mathematics independently; run local tests and audit package.
-- [ ] Conventional commit, push branch, inspect remote CI and report tested limits.
+- [x] Conventional commit, push branch, inspect remote CI and report tested limits.
 
 ## Review
 
 Changed: pure Python and VBA cores; shared scalar references; NX and CATIA source adapters; adversarial packaging tests and file allowlist; CI and manual prerelease workflow; native build/test guides and mathematical contract.
 
-Verification: 16 local unittest cases pass, Python compileall passes, independent golden-section/Simpson numerical check passes. Precommit source archive has exactly 22 allowlisted files plus a status/checksum manifest. Staged index audit and final commit-package build run immediately before/after commit. Windows cscript execution is pending the first push; no VBA compiler or CAD host is present. No native DLX/CATVBA binaries or geometry are generated. Workbook input was not supplied or used.
+Verification: 16 local unittest cases pass, Python compileall passes, independent golden-section/Simpson numerical check passes. Precommit source archive has exactly 22 allowlisted files plus a status/checksum manifest. LF checkout normalization added after observing Windows CRLF hash differences. Staged index audit and final commit-package build run immediately before/after commit. Windows cscript passed in CI run 43723275112 under initial en-US and de-DE locale, including a deliberately failing radius mutation. All three Linux/Windows jobs passed. No VBA compiler or CAD host is present. No native DLX/CATVBA binaries or geometry are generated. Workbook input was not supplied or used.
 
 Review findings handled: region-independent CSV fixture parsing (en-US and de-DE host test passes scheduled in CI), re-resolve release tag immediately before publication, clarify manual acknowledgement versus unconfigured environment approvals. Remaining release limitation: server-side immutable tag rules are not configured; manual release publication and all CAD acceptance tests remain unexecuted.
 
 Subagents: independent numerics (id: /root/numerical_review), source/security review (id: /root/source_security_review). Primary handled implementation, documentation and commit. No separate commit agent: serialized Git ownership avoids overlapping mutations. Model/effort: current GPT-6 agent, high reasoning; legacy model names from routing skill unavailable. Complexity: hard.
+
+Remote: first verified source commit `72190950f290f3ec6bb4c09453f72ca5b804bcf1` pushed; [CI evidence](https://github.com/TimKleindick/cad-embossing-wrinkle-calculator/actions/runs/43723275112) succeeded. Repository stays private. As the first branch in an empty repository, GitHub selected the feature branch as default; `main` does not yet exist. No merge, tag or release performed. Final documentation commit records this evidence and is rechecked by CI.
