@@ -1,0 +1,16 @@
+# Internal workbooks must never enter Git, CI artifacts or releases.
+*.[xX][lL][sS]*
+*.[xX][lL][tT]*
+*.[xX][lL][aA]*
+*.[oO][dD][sS]
+*.[nN][uU][mM][bB][eE][rR][sS]
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+.worktrees/
+# Native CAD packaging must be created and validated on the workstation first.
+*.catvba
+*.CATVBA
+*.dlx
+*.frx
