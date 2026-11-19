@@ -13,25 +13,25 @@ import NXOpen.BlockStyler
 
 
 def report(result):
-    fields=[('amplitude_mm','A [mm]'),('radius_mm','R [mm]'),('height_mm','Hoehe [mm]'),
-            ('phi_deg','Winkel [deg]'),('straight_mm','Gerade je Seite [mm]'),
-            ('fit_polygon_mm','Excel-Polygonlaenge [mm]'),('fit_analytic_mm','Analytische Fitlaenge [mm]'),
-            ('length_error_pct','Polygon-Laengenabweichung [%]'),
-            ('analytic_length_error_pct','Analytische Laengenabweichung [%]'),
-            ('rms_form_error_mm','Vertikale Formabweichung RMS [mm]'),
-            ('max_form_error_mm','Max. vertikale Formabweichung [mm]'),
-            ('cosine_radius_excel_mm','Excel-Kosinusradius [mm]'),
-            ('cosine_radius_corrected_mm','Korrigierter Kosinusradius [mm]'),
-            ('cosine_strain_excel_pct','Excel-Dehnungsabschaetzung [%]'),
-            ('cosine_strain_corrected_pct','Korrigierte Kosinusabschaetzung [%]'),
-            ('arc_strain_pct','Kreisbogen-Dehnungsabschaetzung [%]')]
-    lines=['SOURCE PREVIEW - CAD-Laufzeit/Import ungetestet','Standard: Excel, 1000 Segmente, Formfit ohne Laengenbedingung']
+    fields=[('amplitude_mm','A [mm]'),('radius_mm','R [mm]'),('height_mm','Height h [mm]'),
+            ('phi_deg','Flank angle [deg]'),('straight_mm','Straight length per side [mm]'),
+            ('fit_polygon_mm','Fitted polyline length [mm]'),('fit_analytic_mm','Analytic fitted length [mm]'),
+            ('length_error_pct','Polyline length deviation [%]'),
+            ('analytic_length_error_pct','Analytic length deviation [%]'),
+            ('rms_form_error_mm','RMS vertical profile deviation [mm]'),
+            ('max_form_error_mm','Maximum vertical deviation at sample points [mm]'),
+            ('cosine_radius_excel_mm','Cosine radius using the Excel formula [mm]'),
+            ('cosine_radius_corrected_mm','Corrected cosine radius [mm]'),
+            ('cosine_strain_excel_pct','Cosine strain using the Excel radius [%]'),
+            ('cosine_strain_corrected_pct','Cosine strain using the corrected radius [%]'),
+            ('arc_strain_pct','Circular arc strain estimate [%]')]
+    lines=['SOURCE PREVIEW - CAD runtime and import untested','Excel method with 1,000 segments and no fitted-length constraint']
     for key,label in fields:
         value=result[key]
-        lines.append(label+': '+('entfaellt / nicht angegeben' if value is None else format(value,'.9f')))
+        lines.append(label+': '+('Not applicable or not provided' if value is None else format(value,'.9f')))
     if abs(result['length_error_pct']) >= .1:
-        lines.append('Laengenziel <0.1% NICHT erreicht; Excel-Standard unveraendert.')
-    lines.append('Dehnung: stark vereinfachtes t/(2r)-Modell; keine Materialfreigabe oder Risssicherheitsaussage.')
+        lines.append('Length deviation reaches or exceeds 0.1%.')
+    lines.append('Simplified t/(2r) estimate. Material approval and crack safety are outside its scope.')
     return '\n'.join(lines)
 
 
@@ -40,7 +40,7 @@ class WrinkleDialog:
         self.ui=NXOpen.UI.GetUI()
         path=Path(__file__).with_name('wrinkle.dlx')
         if not path.is_file():
-            raise FileNotFoundError('wrinkle.dlx fehlt. In NX Block Styler nach docs/NX2412.md erstellen.')
+            raise FileNotFoundError('wrinkle.dlx is missing. Create it using the optional Block Styler guide.')
         self.dialog=self.ui.CreateDialog(str(path))
         self.dialog.AddInitializeHandler(self.initialize)
         self.dialog.AddApplyHandler(self.apply)
@@ -64,10 +64,10 @@ class WrinkleDialog:
             listing=NXOpen.Session.GetSession().ListingWindow
             listing.Open()
             listing.WriteLine(text)
-            self.ui.NXMessageBox.Show('Faltenrechner - Source Preview',NXOpen.NXMessageBox.DialogType.Information,text)
+            self.ui.NXMessageBox.Show('Wrinkle Geometry - Source Preview',NXOpen.NXMessageBox.DialogType.Information,text)
             return 0
         except Exception as exc:
-            self.ui.NXMessageBox.Show('Faltenrechner',NXOpen.NXMessageBox.DialogType.Error,str(exc))
+            self.ui.NXMessageBox.Show('Wrinkle Geometry',NXOpen.NXMessageBox.DialogType.Error,str(exc))
             return 1
 
 
@@ -77,7 +77,7 @@ def main():
         instance=WrinkleDialog()
         instance.dialog.Show()
     except Exception as exc:
-        NXOpen.UI.GetUI().NXMessageBox.Show('Faltenrechner - Source Preview',NXOpen.NXMessageBox.DialogType.Error,str(exc))
+        NXOpen.UI.GetUI().NXMessageBox.Show('Wrinkle Geometry - Source Preview',NXOpen.NXMessageBox.DialogType.Error,str(exc))
     finally:
         if instance is not None:
             instance.dialog.Dispose()

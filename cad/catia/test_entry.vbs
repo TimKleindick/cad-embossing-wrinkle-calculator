@@ -50,8 +50,8 @@ For Each localeId In Array(1033,1031)
     Assert InStr(fake.outputs,summary)>0,"calculated amplitude in visible output"
     Assert InStr(fake.outputs,"0.434593")>0 Or InStr(fake.outputs,"0,434593")>0,"length error visible"
     Assert InStr(fake.outputs,"13.465240")>0 Or InStr(fake.outputs,"13,465240")>0,"Excel strain visible"
-    Assert InStr(fake.outputs,"NICHT erreicht")>0,"length target status"
-    Assert InStr(fake.outputs,"Kosinus-Amplitude")>0,"fallback explains A"
+    Assert InStr(fake.outputs,"reaches or exceeds 0.1%")>0,"length target status"
+    Assert InStr(fake.outputs,"cosine amplitude")>0,"fallback explains A"
     Set fake=New FixtureDialogs
     fake.answers=Array("40","30","2,5")
     fake.thicknessChoice=6
@@ -64,7 +64,7 @@ For Each localeId In Array(1033,1031)
     Set fake=New FixtureDialogs
     fake.answers=Array("30","30")
     success=WrinkleRun(fake)
-    Assert success And InStr(fake.outputs,"entfaellt")>0,"flat and thickness disabled"
+    Assert success And InStr(fake.outputs,"Not applicable")>0,"flat and thickness disabled"
     Assert InStr(fake.reportData,"""thickness"":null,""values"":[0,null,0,0,15,")>0,"flat report values and missing radius"
     For Each sample In Array(Array("","30"),Array("40",""),Array("40","30",""))
         Set fake=New FixtureDialogs

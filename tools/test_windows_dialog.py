@@ -1,7 +1,10 @@
 """Exercise the actual generated Windows dialog in a separate process, outside NX."""
 import ctypes
 from ctypes import wintypes as w
+import json
+import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -29,11 +32,26 @@ def main():
     def set_text(hwnd,ident,value):
         data=ctypes.create_unicode_buffer(value)
         send(user.GetDlgItem(hwnd,ident),0x0c,0,ctypes.addressof(data))  # WM_SETTEXT
-    title='Faltenrechner - Source Preview - CAD ungetestet'
+    title='Wrinkle Geometry - Source Preview'
     with tempfile.TemporaryDirectory() as tmp:
         file=Path(tmp)/'NX_WrinkleCalculator.py'
         shutil.copyfile(ROOT/'ready-to-run/NX_WrinkleCalculator.py',file)
-        process=subprocess.Popen([sys.executable,'-I',str(file)],cwd=tmp,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+        # Exercise report creation through the real dialog while keeping the runner's browser closed.
+        launch = '''
+from pathlib import Path
+import runpy
+import shutil
+
+def capture_report(path):
+    if Path('block-report').exists():
+        raise OSError('Simulated unavailable browser')
+    shutil.copyfile(path, 'captured-report.html')
+
+runpy.run_path('NX_WrinkleCalculator.py')['run_dialog'](owner=0, open_file=capture_report)
+'''
+        env = dict(os.environ, TMPDIR=tmp, TEMP=tmp, TMP=tmp)
+        process=subprocess.Popen([sys.executable,'-I','-c',launch],cwd=tmp,env=env,
+                                 stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
         hwnd=None
         try:
             deadline=time.monotonic()+15
@@ -42,7 +60,9 @@ def main():
                 pid=w.DWORD()
                 if candidate:
                     user.GetWindowThreadProcessId(candidate,ctypes.byref(pid))
-                    if pid.value==process.pid:
+                    # FindWindow can return the parent before Windows creates its controls.
+                    controls = (101, 102, 103, 104, 1, 201)
+                    if pid.value==process.pid and all(user.GetDlgItem(candidate, control) for control in controls):
                         hwnd=candidate
                         break
                 if process.poll() is not None:
@@ -63,23 +83,32 @@ def main():
             click()
             report=text()
             assert '6.139413268' in report,report
-            assert '40.173837' in report and 'NICHT erreicht' in report,report
+            assert '40.173837' in report and 'reaches or exceeds 0.1%' in report,report
             assert '13.465240' in report and '26.930480' in report,report
+            html = (Path(tmp) / 'captured-report.html').read_text(encoding='ascii')
+            assert '<html lang="en">' in html
+            payload = re.search(r'id="result-data" type="application/json">([^<]+)', html)
+            data = json.loads(payload.group(1))
+            assert (data['l1'], data['l2'], data['thickness']) == (40, 30, 2)
+            assert abs(data['fit'][100] - 12.234275) < 1e-6
             # German decimal is accepted independently of machine locale.
             set_text(hwnd,101,'40,0');click()
             assert '6.139413268' in text(),text()
             # Invalid input replaces the previous successful report.
             set_text(hwnd,101,'29');click()
-            assert text().startswith('Fehler:') and '6.139413268' not in text(),text()
+            assert text().startswith('Error:') and '6.139413268' not in text(),text()
             # Flat input and disabled thickness ignore an invalid inactive field.
             set_text(hwnd,101,'30')
             set_text(hwnd,103,'disabled text')
+            (Path(tmp) / 'block-report').touch()
             send(user.GetDlgItem(hwnd,104),0xf1,0);click()
-            assert 'entfaellt / nicht angegeben' in text() and 'Fehler:' not in text(),text()
+            actual = text()
+            assert 'Not applicable or not provided' in actual and 'Error:' not in actual,actual
+            assert 'Could not open the illustrated report' in actual,actual
             send(hwnd,0x10)  # WM_CLOSE
             out,err=process.communicate(timeout=10)
             assert process.returncode==0,out+err
-            print('PASS: actual Win32 dialog from isolated single file; calculation, comma input, invalid/flat input and close. NX host UNTESTED.')
+            print('PASS: actual Win32 dialog from one isolated file, including report creation and browser error fallback. NX host UNTESTED.')
         finally:
             if process.poll() is None:
                 if hwnd:

@@ -1,99 +1,79 @@
-# CATIA V5 R32: vorbereitete Datei starten
+# Run the wrinkle calculator in CATIA V5 R32
 
-## Lieferumfang und Status
+## What you need
 
-Startdatei: **`ready-to-run/CATIA_WrinkleCalculator.CATScript`**. Sie enthält den unveränderten VBA/VBScript-kompatiblen Kern und den vollständigen Makroeinstieg. CATIA fragt die Eingaben in Dialogen ab. Danach öffnet das Makro einen lokalen Ergebnisbericht mit beschrifteter Profilskizze im Windows-Standardbrowser. Kein CATVBA-Projekt, keine UserForm-Erstellung, kein Import von BAS-/FRM-Dateien, keine Excel-Installation und kein externer Python-Aufruf erforderlich.
+Use **`ready-to-run/CATIA_WrinkleCalculator.CATScript`** on a Windows workstation with CATIA V5 R32, a working VBScript engine, and permission to run macros. The standalone file includes the calculation core, native input prompts, and the illustrated report. It runs without a CATVBA project, UserForm, Excel installation, or Python. For a designer-built interface, see the [optional UserForm guide](CATIA-V5-R32-UserForm-optional.md).
 
-Die bequemere zusammenhängende UserForm bleibt als [optionale Ausbauanleitung](CATIA-V5-R32-UserForm-optional.md). Für dynamische CATVBA-UserForms aus einem reinen Skript ohne Formular-/Projektabhängigkeit wurde kein belastbar dokumentierter CATIA-Weg gefunden. Daher ist die vorbereitete Folge nativer Dialoge die konkrete Standardalternative. Es wird keine allgemeine technische Unmöglichkeit behauptet.
+The report uses the Windows default browser and the Windows components `Scripting.FileSystemObject` and `Shell.Application`. If creating or opening the report fails, the macro shows three text dialogs. Windows CI checks the macro source and calculation through Windows Script Host. The macro's registration, dialogs, report launch, licensing and installation in CATIA V5 R32 still need workstation verification.
 
-**CATIA V5 R32, Makroregistrierung, tatsächliche Eingabe-/Ausgabedialoge im Host, Skript-Engine, Lizenzen und reale Arbeitsplatzinstallation bleiben ungetestet.** Windows-CI führt den tatsächlichen Makro-Quellcode mit kontrollierter Ein-/Ausgabe aus; sie startet CATIA nicht.
+Microsoft lists VBScript as deprecated and available as a Windows Feature on Demand. If the engine is missing or macros are blocked, check the supported CATIA and Windows configuration with IT. [Microsoft VBScript status](https://learn.microsoft.com/en-us/windows/whats-new/deprecated-features-resources)
 
-## 1. Dateien beziehen und entpacken
+## 1. Download the macro
 
-1. Das [Repository auf dem Hauptbranch main](https://github.com/TimKleindick/cad-embossing-wrinkle-calculator/tree/main) öffnen. Bei noch privater Sichtbarkeit mit dem berechtigten GitHub-Konto anmelden.
-2. **Code > Download ZIP** anklicken und lokal speichern, zum Beispiel unter `C:\CAD-Test\Wrinkle`.
-3. Im Windows-Explorer **Alle extrahieren…** verwenden. Den entpackten Hauptordner und darin **`ready-to-run`** öffnen. Nicht den ZIP-Inhalt direkt registrieren.
-4. Die Datei muss exakt **`CATIA_WrinkleCalculator.CATScript`** heißen. Dateiendungen einblenden; `.CATScript.txt` ist falsch. Die aktuelle Datei beginnt mit `Option Explicit`. Alternativ nur diese eine Datei über GitHubs **Download raw file** beziehen; sie benötigt keine Begleitdateien.
-5. Den Quell-Commit aus der GitHub-Dateiansicht für das spätere Protokoll notieren. Ein gebautes Source-Preview-ZIP darf ebenfalls vollständig entpackt werden; der gleiche Unterordner enthält die Startdatei. Für diesen Auftrag wurde kein Release veröffentlicht.
+1. Open the public [repository on main](https://github.com/TimKleindick/cad-embossing-wrinkle-calculator/tree/main) and choose **Code > Download ZIP**.
+2. Save the ZIP locally, for example under `C:\CAD-Test\Wrinkle`. In Windows Explorer, right-click it and select **Extract All**. Open **`ready-to-run`** in the extracted folder.
+3. Locate **`CATIA_WrinkleCalculator.CATScript`**. If necessary, enable **View > Show > File name extensions** in Explorer and check that the file ends in `.CATScript`.
+4. Alternatively, open the [macro on GitHub](https://github.com/TimKleindick/cad-embossing-wrinkle-calculator/blob/main/ready-to-run/CATIA_WrinkleCalculator.CATScript) and select **Download raw file**. The source starts with `Option Explicit`. For a repeatable workstation test, record the Git commit you downloaded.
 
-Keine Original-Excel in das Repository oder Testprotokoll kopieren. Der Ergebnisbericht besteht aus einer HTML-Datei im Windows-Temp-Ordner. Sie enthält die eingegebenen und berechneten Werte sowie die Skizze. Der Bericht funktioniert offline und verwendet keine externen Bilder oder Skripte.
+A source preview ZIP built with the repository's packaging tool also contains the macro under `ready-to-run`. Keep the original workbook outside the repository and test evidence.
 
-## 2. Voraussetzungen und Einstellungen
+## 2. Register and run the macro
 
-- Windows-Arbeitsplatz mit **CATIA V5 R32** und erlaubter Skript-Makroausführung. Eine konkrete zusätzliche Lizenz-SKU ist anhand der verfügbaren Quellen nicht bestätigt; Lizenz-/Makrofreigaben vor Ort mit IT prüfen.
-- Funktionierende **VBScript-Skript-Engine** in der unterstützten CATIA-/Windows-Konfiguration. Das Makro ruft weder `wscript.exe` noch `cscript.exe` auf; diese werden nur für externe CI-Tests benutzt.
-- Die grafische Ausgabe verwendet den Windows-Standardbrowser und die Windows-Komponenten `Scripting.FileSystemObject` und `Shell.Application`. Bei einem Fehler beim Erstellen oder Öffnen des Berichts zeigt das Makro die drei Textdialoge.
-- Kein VBA-Editor und keine Microsoft-Forms-Installation für diesen Startweg vorgesehen. Keine Makro-Sicherheitsrichtlinie global abschalten und keine externen COM-Form-Klassen registrieren.
-- Microsoft kündigt VBScript ab und führt es als Windows Feature on Demand. Fehlt die Engine, ist dies eine zu klärende Installations-/IT-Frage, kein Anlass, Unternehmensrichtlinien zu umgehen. Die konkrete R32-/Windows-Kombination wurde hier nicht getestet.
+1. Start CATIA V5 R32. If your configuration requires a document to enable the macro menu, open a blank test part.
+2. Choose **Tools > Macro > Macros**, then **Macro libraries**.
+3. Set **Library type** to **Directories**, choose **Add existing library**, and select the extracted **`ready-to-run`** folder or the local folder where you saved the raw macro. Confirm with **OK**.
+4. Select **Close** to return to the macro list. If prompted, select the directory library you just added.
+5. Select **`CATIA_WrinkleCalculator`** or the full **`.CATScript`** file name and choose **Run**. CATIA calls `CATMain` and opens the first input box for `l1`.
 
-## 3. Genau im CAD registrieren und starten
+Add the directory once and reuse it from the macro dialog. Check whether your R32 configuration retains the library after restart. The menu labels and directory library workflow are documented for older V5 releases. Confirm the exact menu and behavior in your installed version.
 
-1. CATIA V5 R32 normal starten. Der Rechner verwendet keine Dokumentobjekte; produktive CATParts/CATProducts sind nicht nötig. Falls die lokale Oberfläche ein Dokument zum Aktivieren der Menübefehle verlangt, ein neues leeres Testteil verwenden.
-2. **Tools > Macro > Macros…** öffnen (je nach Oberfläche **Extras > Makro > Makros…**).
-3. Im Makrodialog **Macro libraries…** anklicken.
-4. Bei **Library type / Bibliothekstyp** **Directories / Verzeichnisse** wählen. **Nicht VBA Projects** wählen.
-5. **Add existing library… / Vorhandene Bibliothek hinzufügen…** wählen und genau den entpackten Ordner **`ready-to-run`** auswählen, in dem die `.CATScript` liegt. Mit **OK** bestätigen.
-6. Mit **Close / Schliessen** zur Makroliste zurückkehren. Falls nötig die soeben registrierte Verzeichnisbibliothek auswählen.
-7. Das Makro **`CATIA_WrinkleCalculator`** beziehungsweise den vollständigen `.CATScript`-Dateinamen auswählen und **Run / Ausführen** drücken. CATIA soll dessen `CATMain` selbst aufrufen; die Datei nicht umbenennen und keinen zusätzlichen Aufruf hineinkopieren.
-8. Erwartet wird die erste Eingabebox für l1. Die Bezeichnung der Menüs und die Registrierung sind durch ältere V5-Hersteller-Supportfälle belegt; die exakte Darstellung in R32 ist ausdrücklich noch am Arbeitsplatz zu bestätigen.
+## 3. Check the illustrated results
 
-Die Bibliotheksregistrierung ist normalerweise der einmalige Vorbereitungsschritt. Beim nächsten Test Makrodialog öffnen, dieselbe Bibliothek/Makrodatei auswählen und Run drücken. Ob die lokale R32-Konfiguration die Bibliothek über einen Neustart speichert, muss einmal überprüft werden.
+1. Enter `40` at **Developed target length l1** and `30` at **Projected width l2**.
+2. Choose **Yes** at **Estimate strain from wall thickness?**, enter `2` at **Optional wall thickness**, and confirm. All values are in mm. The input accepts a decimal point or comma, for example `40.0` or `40,0`. Enter plain numbers without grouping separators, units, or exponents.
+3. The Windows default browser opens **Wrinkle geometry**, the same offline English report as NX, with both profiles, dimension arrows, definitions and numerical results. The report HTML remains in the Windows temporary directory. At a launch error, the macro shows three English text dialogs. The text dialogs follow the Windows number locale.
 
-## 4. Eingabefolge und Sollvergleich
-
-1. **Abgewickelte Laenge l1**: `40`, mit OK bestätigen.
-2. **Projizierte Breite l2**: `30`, mit OK bestätigen.
-3. **Optionale Dickenabschaetzung berechnen?**: **Ja** wählen.
-4. **Optionale Wanddicke**: `2`, mit OK bestätigen.
-5. Im Standardbrowser erscheint **Faltengeometrie** mit den beiden Profilen, Maßpfeilen und allen Ergebniswerten. `A` reicht von der Mittellinie zum Kosinus-Scheitel. `l1` bezeichnet die Soll-Länge entlang der Kosinus-Referenz und `l2` die Breite zwischen den Endpunkten. Bei einem Fehler beim Browserstart folgen die drei Textdialoge.
-
-Alle Eingaben sind mm. Ein Punkt oder ein Komma wird eindeutig als **Dezimalzeichen** interpretiert, z.B. `40,0` und `40.0` sind gleich. Keine Tausendertrennzeichen, Einheiten oder Exponenten verwenden; mehrdeutige gemischte Schreibweisen werden abgelehnt. Der Browserbericht formatiert Zahlen auf Deutsch. Die Textdialoge richten sich nach der Windows-Regionseinstellung.
-
-| Abschnitt | Größe | Soll, ungefähr |
+| Report section | Quantity | Approximate result |
 |---|---|---:|
-| Profilmaße | A | 6,139413268 mm |
-| Profilmaße | R | 5,0322554 mm |
-| Profilmaße | Höhe | 12,2342750 mm |
-| Profilmaße | Winkel | 49,8407463° |
-| Profilmaße | Gerade je Seite | 11,3319680 mm |
-| Längen- und Formvergleich | Excel-Polygonlänge | 40,1738373 mm |
-| Längen- und Formvergleich | Analytische Fitlänge | 40,1738725 mm |
-| Längen- und Formvergleich | Polygon-Längenabweichung | **+0,434593 %** |
-| Längen- und Formvergleich | Vertikale Formabweichung RMS / maximal | 0,096220 / 0,181006 mm |
-| Radien und Dehnungsabschätzung | Excel-/korrigierter Kosinusradius | 7,426529319 / 3,713264660 mm |
-| Radien und Dehnungsabschätzung | Excel-/korrigierte Kosinus-Dehnung | 13,465240 / 26,930480 % |
-| Radien und Dehnungsabschätzung | Kreisbogen-Dehnung | 19,871805 % |
+| Profile dimensions | Cosine amplitude A | 6.139413268 mm |
+| Profile dimensions | Fitted arc radius R | 5.0322554 mm |
+| Profile dimensions | Fitted profile height h | 12.2342750 mm |
+| Profile dimensions | Flank angle φ | 49.8407463° |
+| Profile dimensions | Straight segment s per side | 11.3319680 mm |
+| Length and shape comparison | Fitted polyline length | 40.1738373 mm |
+| Length and shape comparison | Analytical length of the fitted profile | 40.1738725 mm |
+| Length and shape comparison | Fitted polyline length deviation from l1 | **+0.434593%** |
+| Length and shape comparison | RMS and maximum vertical shape deviations at the sample points | 0.096220 / 0.181006 mm |
+| Radii and strain estimates | Excel and corrected cosine radii | 7.426529319 / 3.713264660 mm |
+| Radii and strain estimates | Excel and corrected cosine strain estimates | 13.465240 / 26.930480% |
+| Radii and strain estimates | Fitted arc strain estimate | 19.871805% |
 
-Der Hinweis **`Laengenziel <0.1% NICHT erreicht`** gehört zum korrekten Excel-Standard. Es wird weiter mit 1000 Segmenten und Formfit ohne Längenbedingung gerechnet. Dehnung ist allein die stark vereinfachte `t/(2r)`-Abschätzung, keine Freigabe oder Risssicherheitsaussage.
+The report shows that the length deviation misses the 0.1% target. The fit reproduces the original Excel method without adjusting the length. The strain values are simplified `t/(2r)` estimates and provide no material approval or crack resistance assessment.
 
-## 5. Abbruch, Fehler und weitere Testfälle
+## 4. Try cancellation and other inputs
 
-- **Leer lassen oder Abbrechen** in einer Wertebox beendet den gesamten Lauf ohne Ergebnis. Eine leere Eingabe wird nicht zur Null umgewandelt. Das native InputBox-Verhalten unterscheidet leere Bestätigung und Abbrechen nicht sicher; beide sind deshalb ausdrücklich Abbruch.
-- Bei der Dickenfrage bedeutet **Nein**: rechnen ohne Dickenabschätzung. **Abbrechen** beendet alles. Bei Ja muss eine nichtleere Dicke eingegeben werden; auch hier beendet Abbrechen den Lauf.
-- Ungültige Eingaben liefern eine Fehlermeldung ohne Erfolgsseiten. Danach Makro erneut starten. Beispiele: `29/30`, `text`, negative Dicke. Unterstützt sind positive Längen 0,001..1.000.000 mm, `l2<=l1<=2*l2` und optionale Dicke 0..1.000.000 mm.
-- `30/30`, Dickenfrage Nein: flach, A/Höhe/Winkel/Fehler null, Gerade je Seite 15, Fitlänge 30 mm, Radien undefiniert, Dehnungen nicht angegeben.
-- `80/60/4`: Längen doppelt, Winkel, relative Fehler und Dehnungsabschätzungen unverändert.
-- Nach der Ergebnisausgabe muss CATIA normal bedienbar sein. Makro erneut starten und nach l1 abbrechen; danach einmal CATIA schließen/öffnen und die Registrierung erneut prüfen. Geometrieanzahl und Dokument-Änderungsstatus sollen unverändert bleiben.
+- **Cancel** or an empty value ends the run before calculation. CATIA's input box reports a blank confirmation and a cancellation the same way.
+- **No** at the wall thickness prompt calculates without strain estimates. **Cancel** ends the run. **Yes** requires a wall thickness value.
+- Try `29 / 30`, text in a length field, or negative thickness. The calculator should show an error without a success report. Supported lengths are 0.001 to 1,000,000 mm with `l2 <= l1 <= 2*l2`. Optional wall thickness ranges from 0 to 1,000,000 mm.
+- Try `30 / 30` with thickness off. The profile is flat, with zero amplitude, height, angle and deviations. Each straight segment is 15 mm, the fit length is 30 mm, and the radii and strain estimates are unavailable.
+- Try `80 / 60 / 4`. Absolute lengths double and angles, relative errors and strain estimates stay the same.
+- Verify that CATIA is available after the report opens. Run the macro again and cancel after the first input. Then restart CATIA, check the directory registration, and verify that the macro leaves all geometry and document state unchanged.
 
-## 6. Fehlerdiagnose und Protokoll
+## 5. Troubleshoot the workstation
 
-| Beobachtung | Konkrete Prüfung / nächster Schritt |
+| Observation | Check |
 |---|---|
-| Makro erscheint nicht | Ordner statt ZIP gewählt? Bibliothekstyp Directories? Liegt die `.CATScript` direkt in diesem Ordner? Endung nicht `.txt`? |
-| Projekt-/Formularimport wird verlangt | Falscher Startweg: für diese Datei kein CATVBA-Projekt und keinen VBA-Editor verwenden. Zur Verzeichnis-Makrobibliothek wechseln. |
-| `ScriptingERR_1002` bei `Option Explicit` in Zeile 2 | Aktuelle Raw-Datei herunterladen und die alte Kopie im registrierten Makroordner ersetzen. `Option Explicit` steht in der korrigierten Datei in Zeile 1. |
-| Skript-Engine nicht verfügbar / Makro durch Richtlinie blockiert | Vollständige Meldung sowie CATIA-Build/SP/HF und Windows-Version erfassen. Unterstützte Engine/IT-Freigabe prüfen lassen; keine Sicherheitseinstellungen global senken. |
-| Eingabebox verdeckt | Taskleiste/Alt+Tab und CATIA-Fokus prüfen. Frühe V5-Versionen hatten dokumentierte InputBox-Fokusprobleme; daraus wird kein Fehler in R32 abgeleitet. Modalität/Fokus sind Teil des offenen Tests. |
-| Textdialoge statt Profilskizze | Windows-Standardprogramm für HTML und Schreibzugriff auf den Temp-Ordner prüfen. Der Start des Browserberichts aus CATIA V5 R32 muss vor Ort bestätigt werden. |
-| Nach Abbrechen kein Ergebnis | Vorgesehen: abbrechen/leer beendet vollständig. Erneut Run wählen. |
-| Zahl wird zurückgewiesen | Genau ein Dezimalzeichen, keine Gruppen-/Einheiten-/Exponentschreibweise; Wertebereich und l1/l2-Verhältnis prüfen. |
-| Dehnungswerte fehlen | Dickenfrage bewusst Ja wählen und Dicke eingeben. Nein bedeutet keine Schätzung, nicht Dicke null. |
+| Macro does not appear | Check that the library type is **Directories** and the selected directory directly contains the extracted `.CATScript` file. Check the file extension. |
+| CATIA requests a project or form import | Open the directory macro library and select the standalone file. |
+| `ScriptingERR_1002` at `Option Explicit` on line 2 | Replace the older copy in the registered macro directory with the current raw file. `Option Explicit` should be on line 1. |
+| Script engine unavailable or policy blocks execution | Give IT the full message, CATIA build, service pack or hotfix, and Windows version. Ask about the supported engine and allowed macro configuration. |
+| Input box is hidden | Check the taskbar and **Alt+Tab**. Focus and modality require verification in the CATIA host. |
+| Text dialogs appear in place of the profile | Check the Windows default application for HTML and whether CATIA can write to the temporary directory and open that application. |
+| Input is rejected | Verify the numeric format, valid ranges, and `l2 <= l1 <= 2*l2`. |
+| Strain values are missing | Choose **Yes** at the wall thickness prompt and enter a value. **No** leaves the estimates blank. |
 
-Protokollieren: Quell-Commit, CATIA-Build/SP/HF, Windows-Version, freigegebene Makro-/Engine-Konfiguration, tatsächlich geklickte Menüfolge, Eingaben/Ergebnisse, Abbruch und Neustarttest sowie unveränderte Dokument-/Geometriezustände. Keine Original-Excel anhängen. Erst bestandene Schritte als CAD-getestet markieren.
+Record the commit, CATIA build, service pack or hotfix, Windows version, macro permissions, inputs, results, browser launch, cancellation, and restart behavior. Verify that the macro leaves document geometry unchanged.
 
-## Quellen und Grenzen der Belege
+Dassault's automation conventions place `Option Explicit` first and remove the `Language` assignment from recorded macros. IBM documents the directory library workflow for older V5 releases. The installed CATIA V5 R32 automation help is the version-specific reference. [Dassault CAA macro rules](https://catia-v5-help.anarkia333data.center/online/CAAScrTechArticles/CAAScrScriptCodingRules.htm) · [IBM HE03301](https://www.ibm.com/support/pages/apar/HE03301) · [Dassault Help](https://help.3ds.com/)
 
-Die [CAA-V5-Makroregeln von Dassault Systèmes](https://catia-v5-help.anarkia333data.center/online/CAAScrTechArticles/CAAScrScriptCodingRules.htm) setzen `Option Explicit` an den Anfang und entfernen die `Language`-Zuweisung aus aufgezeichneten Makros. [IBM HE03301](https://www.ibm.com/support/pages/apar/HE03301) beschreibt den Verzeichnisbibliothek-Start für einen älteren V5-Stand. [Microsoft InputBox](https://learn.microsoft.com/en-us/openspecs/microsoft_general_purpose_programming_languages/ms-vbal/64b763ff-9f5f-43cd-b247-c75557e51989) erklärt das Abbruchverhalten, [Typkonvertierung](https://learn.microsoft.com/en-us/office/vba/language/concepts/getting-started/type-conversion-functions) die Locale-Abhängigkeit normaler Konvertierungen. Unser Parser vermeidet diese Mehrdeutigkeit. [Microsofts VBScript-Status](https://learn.microsoft.com/en-us/windows/whats-new/deprecated-features-resources) betrifft die Engine-Verfügbarkeit. Maßgeblich für R32 bleiben die installierte Automation-Hilfe und [Dassault Help](https://help.3ds.com/).
-
-
-Zusätzlich geprüfter Recherchehinweis: Der [vom Nutzer genannte V5-Hilfespiegel „Running a Macro“](https://catia-v5-help.anarkia333data.center/online/basug_C2/basugbt1903.htm) beschreibt ebenfalls Tools > Macro > Macros und als weiteren Startweg den **Doppelklick auf `.CATScript`** mit passender Windows-Dateizuordnung. Das ist keine R32-Abnahme. Wenn die bestehende Dateizuordnung nachweislich auf Tims R32-Installation zeigt, kann Tim diesen optionalen Schnellstart testen; sonst den oben beschriebenen Verzeichnisbibliothek-Weg verwenden. Keine globale Dateizuordnung oder Kommandozeilenumgebung muss für unseren Standardweg verändert werden. Der Spiegel ist ein zusätzlicher Hinweis; die Hauptanleitung stützt die Makrokonvention auf die oben genannten Hersteller-Supportfälle.
+The older V5 help also describes opening a `.CATScript` via its Windows file association. Use that path only if the existing association points to the intended R32 installation. The directory library workflow works independently of the file association. [Running a Macro](https://catia-v5-help.anarkia333data.center/online/basug_C2/basugbt1903.htm)

@@ -1,52 +1,51 @@
-# CATIA V5 R32: Arbeitsplatztest
+# Optional CATIA V5 R32 UserForm setup
 
-**Status: VBA-Quellen und UserForm-Code; VBA-Kompilierung, CATIA-Laufzeit, native UI-Importe, Lizenzen und reale Installation sind auf diesem Mac ungetestet.** Eine `.catvba` ist ein vom Zielhost erstelltes Projekt, keine umbenannte Textdatei. Eine zuverlässige CATVBA-/FRX-Erzeugung ist hier nicht möglich; deshalb werden keine solchen Binärdateien vorgetäuscht.
+The [standalone CATScript](CATIA-V5-R32.md) is the standard entry and produces the illustrated report. This optional workstation procedure builds a native CATVBA UserForm for text results. VBA compilation, CATIA execution, Forms imports, licensing, and installation remain unverified. CATIA creates the `.catvba` project on the workstation.
 
-## Voraussetzungen und Quellen
+## Requirements and source files
 
-Windows-Arbeitsplatz mit CATIA V5 R32 und installiertem/erlaubtem VBA-Editor samt Microsoft Forms. Die genaue Verfügbarkeit von VBA und Makroausführung mit IT/Lizenzadministration prüfen. Keine Excel-Installation, kein Solver und kein Excel-Objektmodell nötig. Makros nach der Unternehmensrichtlinie freigeben; keine globalen Sicherheitsrichtlinien abschalten.
+Use a Windows workstation with CATIA V5 R32, an available VBA editor with Microsoft Forms, and permission to run macros. Check these permissions and licensing with the workstation administrator. The calculation uses no Excel installation or object model.
 
-`cad/catia/WrinkleCore.bas` ist der reine Rechenkern. Er nutzt nur VBA-Arithmetik, Variant-Arrays und Standardfunktionen; keine CATIA-/Excel-Objekte. `Launch.bas` öffnet das Formular. `UserForm-code.txt` ist **nur einzufügender Code**, kein importierbares `.frm` oder `.frx`.
+- `cad/catia/WrinkleCore.bas` contains the calculation core and uses standard VBA arithmetic and Variant arrays.
+- `cad/catia/Launch.bas` opens the form.
+- `cad/catia/UserForm-code.txt` contains the text to paste into the form's code window.
 
-Die Windows-CI führt denselben Kern nach Entfernung der Exportzeile `Attribute VB_Name` im VBScript-Host aus. Das prüft Zahlen und gemeinsame Sprachsemantik, **keine VBA-Kompilierung, keinen Forms-Designer und keinen CATIA-Import**. Windows Script Host ist eine Testabhängigkeit, keine Laufzeitabhängigkeit des späteren CATVBA-Prototyps. Falls WSH durch Unternehmensrichtlinie fehlt, nicht aktivieren; den Kern im erlaubten VBA-Host prüfen.
+Windows CI runs the same calculation core through the standalone CATScript using Windows Script Host. It covers numerical behavior and shared language semantics. VBA project compilation, the Forms designer, and importing into CATIA require local verification. The optional CATVBA workflow uses the installed VBA host.
 
-## 1. Echtes CATVBA-Projekt im Host erstellen
+## 1. Create the CATVBA project
 
-1. CATIA starten, optional ein leeres Testteil öffnen. Keine produktiven Dokumente nötig.
-2. Über **Tools > Macro > Macros** den Makrodialog öffnen und **Macro libraries** wählen. Den Bibliothekstyp **VBA Projects** wählen und ein neues Projekt `WrinkleSourcePreview.catvba` im lokalen Testordner erstellen/registrieren. Englische UI-Begriffe dienen als Suchbegriffe; Rolle/Sprache kann abweichen.
-3. Den **Visual Basic Editor** über Tools > Macro öffnen. Im neu erstellten Projekt **File > Import File** aufrufen und `WrinkleCore.bas` sowie `Launch.bas` importieren. Im Projekt müssen die Module exakt `WrinkleCore` und `Launch` erscheinen. Es dürfen keine doppelten/nummerierten Module entstehen.
-4. Unter **Insert > UserForm** ein Formular erstellen und dessen `(Name)` auf **`frmWrinkle`** setzen. Erst das von CATIA gespeicherte Projekt ist eine echte `.catvba`.
+1. Start CATIA and use a blank test part if needed.
+2. Open **Tools > Macro > Macros**, select **Macro libraries**, and choose **VBA Projects**. Create or register `WrinkleSourcePreview.catvba` in a local test directory.
+3. Open the **Visual Basic Editor** from **Tools > Macro**. Under **File > Import File**, import `WrinkleCore.bas` and `Launch.bas` into the new project. Check that the modules appear as `WrinkleCore` and `Launch`.
+4. Select **Insert > UserForm** and set the form's **(Name)** to `frmWrinkle`.
 
-Microsoft beschreibt den [Import von BAS-/FRM-/CLS-Komponenten](https://learn.microsoft.com/en-us/office/vba/language/reference/user-interface-help/import-file-dialog-box) und das [File-Menü des VBA-Editors](https://learn.microsoft.com/en-us/office/vba/language/reference/user-interface-help/file-menu). Ob diese Funktionen in genau dieser CATIA-Installation verfügbar sind, ist vor Ort zu prüfen. CATIA-spezifische Referenz ist die installierte R32 Automation/VBA-Hilfe beziehungsweise [Dassault Help](https://help.3ds.com/) (Zugang erforderlich).
+Check the installed CATIA automation help for version-specific editor options. [Import File dialog](https://learn.microsoft.com/en-us/office/vba/language/reference/user-interface-help/import-file-dialog-box) · [Visual Basic Editor File menu](https://learn.microsoft.com/en-us/office/vba/language/reference/user-interface-help/file-menu) · [Dassault Help](https://help.3ds.com/)
 
-## 2. UserForm exakt aufbauen
+## 2. Configure the UserForm
 
-Formulargröße etwa Width 720, Height 540 Punkte; Caption `Faltenrechner - Source Preview - CAD ungetestet`. Toolbox-Klassen sind die normalen Microsoft-Forms-Controls. Labels für Eingabefelder mit mm ergänzen.
+Set the form to approximately **720 × 540 points** and add standard Microsoft Forms controls with the names below. Add labels that identify mm as the input unit.
 
-| Name | Typ | Eigenschaften / Position (Left, Top, Width, Height) |
+| Name | Type | Position (Left, Top, Width, Height) and properties |
 |---|---|---|
-| txtL1 | TextBox | (180, 15, 100, 22), Label `Abgewickelte Laenge l1 [mm]` |
-| txtL2 | TextBox | (180, 45, 100, 22), Label `Projizierte Breite l2 [mm]` |
-| chkThickness | CheckBox | (15, 80, 260, 22), Caption `Dickenabschaetzung aktivieren` |
-| txtThickness | TextBox | (180, 110, 100, 22), Label `Wanddicke [mm]` |
-| cmdCalculate | CommandButton | (320, 15, 160, 28), Caption `Berechnen` |
-| cmdClose | CommandButton | (500, 15, 120, 28), Caption `Schliessen`, Cancel=True |
-| txtResult | TextBox | (15, 155, 675, 340), MultiLine=True, ScrollBars=3 (Both), WordWrap=False, Locked=True, TabStop=False |
+| `txtL1` | TextBox | (180, 15, 100, 22), label `Developed target length l1 [mm]` |
+| `txtL2` | TextBox | (180, 45, 100, 22), label `Projected width l2 [mm]` |
+| `chkThickness` | CheckBox | (15, 80, 260, 22), caption `Estimate strain from wall thickness` |
+| `txtThickness` | TextBox | (180, 110, 100, 22), label `Wall thickness [mm]` |
+| `cmdCalculate` | CommandButton | (320, 15, 160, 28), caption `Calculate` |
+| `cmdClose` | CommandButton | (500, 15, 120, 28), caption `Close`, Cancel=True |
+| `txtResult` | TextBox | (15, 155, 675, 340), MultiLine=True, ScrollBars=3 (Both), WordWrap=False, Locked=True, TabStop=False |
 
-Den kompletten Inhalt von `UserForm-code.txt` in das Codefenster von `frmWrinkle` kopieren. Eventuell automatisch erzeugte leere Event-Prozeduren vorher entfernen, damit kein Name doppelt vorkommt. Eingaben werden mit `CDbl` nach Windows-Regionseinstellung gelesen: bei deutscher Einstellung Komma als Dezimaltrenner. Keine Tausendertrennzeichen eingeben. Die Startwerte sind ganzzahlig und unabhängig davon.
+Paste the complete contents of `UserForm-code.txt` into the code window for `frmWrinkle`. Remove any automatically generated empty event procedures that would duplicate the supplied procedures. The UserForm uses `CDbl` and follows the Windows decimal locale. Enter plain numbers without grouping separators.
 
-## 3. Kompilieren und starten
+## 3. Compile, run, and validate
 
-Im VBA-Editor **Debug > Compile** für das Projekt ausführen; Fehler protokollieren, keine Referenzprüfung deaktivieren. Unter **Tools > References** darf keine `MISSING`-Referenz stehen. Für diesen Prototyp keine Excel-Bibliothek hinzufügen. Projekt speichern, Editor schließen. Im Makrodialog das `Launch.CATMain` aus dem Projekt ausführen. Erwartet wird die native UserForm. Erst ein erfolgreicher Compile, Speichern, Schließen und erneutes Öffnen bestätigt die lokale Verpackbarkeit; hier wurde das nicht durchgeführt.
+1. In the VBA editor, select **Debug > Compile**. Record compiler errors and check **Tools > References** for missing entries. This project needs no Excel library.
+2. Save the project and close the editor. Run `Launch.CATMain` from the macro dialog and confirm that the form appears.
+3. With wall thickness on, enter `40 / 30 / 2`. Check A ≈ 6.139413268 mm, R ≈ 5.0322554 mm, height ≈ 12.2342750 mm, angle ≈ 49.8407463°, straight segment length ≈ 11.3319680 mm per side, fitted polyline length ≈ 40.1738373 mm, and analytical fit length ≈ 40.1738725 mm. The length deviation should be **+0.434593%**.
+4. Verify the 0.096220 mm RMS and 0.181006 mm maximum vertical shape deviations. Compare the separately labeled strain estimates of 19.871805% for the fitted arcs, 13.465240% for the Excel cosine radius, and 26.930480% for the corrected cosine radius.
+5. Try `30 / 30` for a flat result and `80 / 60 / 4` for doubled lengths. Turn the wall thickness checkbox off to check that no strain estimate appears. Check reference cases and tolerances in [the calculation method](MATHEMATICS.md) and [the reference CSV](../reference/cases.csv).
+6. Check empty input, text, `29 / 30`, negative thickness with the option on, and `l1 > 2*l2`. Each should produce an error and replace any previous result in the form.
+7. Test repeated **Calculate**, **Close**, **Esc**, and reopening. Verify that document geometry and modification status stay unchanged.
+8. Save and close CATIA, start it again, and reopen and run the project. Record the CATIA build, Windows version, macro and license configuration, and actual compilation and startup results.
 
-## 4. Numerik und UI abnehmen
-
-1. CATIA-Build/SP/HF, Windows-Version, VBA-/Forms-Verfügbarkeit, Makrofreigaben und Lizenzprüfung protokollieren.
-2. 40/30, Dicke aktiv 2: A 6,139413268; R ≈5,0322554; Höhe ≈12,2342750; φ ≈49,8407463°; Gerade je Seite ≈11,3319680 mm. Polygon ≈40,1738373; analytisch ≈40,1738725; Fehler **+0,434593 %**. Keine automatische Längenkorrektur.
-3. Form-RMS ≈0,096220; max. vertikale Abweichung ≈0,181006 mm. Dickenwerte ≈19,871805 % Kreis, ≈13,465240 % Excel-Kosinus und ≈26,930480 % korrigierter Kosinus; alle Beschriftungen kontrollieren.
-4. 30/30 liefert flach, undefinierte Radien, null Fehler. 80/60/4 verdoppelt Längen. Dicke ausgeschaltet liefert keine Dehnungszahl. Referenzen und Toleranzen siehe `reference/cases.csv` und Mathematikdokument.
-5. Leere Felder, Text, 29/30, negative Dicke bei aktivierter Option und l1>2*l2 müssen zum Fehler führen; Ergebnisfeld darf dann keinen früheren Erfolg als aktuelle Rechnung zeigen.
-6. Berechnen mehrfach, Schließen, Escape und erneutes Öffnen prüfen. Geometrie-/Dokumentstatus vor und nach vergleichen; es soll kein Objekt erzeugt oder geändert werden.
-7. Projekt speichern, CATIA schließen, frisch starten und Projekt erneut laden/ausführen. Erst diesen Schritt als erfolgreichen Import/Installation im Testprotokoll markieren.
-
-Für einen unabhängigen Windows-Quelltest ohne CATIA aus dem Repository-Stamm: `python tools/run_vbscript_tests.py`. Nicht per Doppelklick auf `.bas` starten. Ein erfolgreiches WSH-Ergebnis ist weiter keine CAD-Freigabe.
+Run `python tools/run_vbscript_tests.py` from the repository root for the independent Windows source check. The result verifies Windows Script Host execution.

@@ -1,48 +1,40 @@
-# NX 2412: Arbeitsplatztest
+# Optional NX 2412 Block Styler setup
 
-**Status: ausführbare Python-Quellen; NX-Laufzeit, Block-Styler-Import, API-Kompatibilität, Lizenz und Installation sind auf diesem Mac ungetestet.** Es liegt absichtlich keine erfundene `wrinkle.dlx` bei. Eine Datei mit dieser Endung wäre ohne Prüfung im passenden NX-Designer kein belastbares Lieferpaket.
+The [standalone journal](NX2412.md) is the standard entry and produces the illustrated report. This optional Windows workstation procedure builds an NX-native Block Styler dialog for text results. NX runtime, the Block Styler import, API compatibility, licensing, and installation remain unverified. Build the `wrinkle.dlx` layout in the installed designer.
 
-## Voraussetzungen
+## Requirements
 
-NX 2412 auf dem Arbeitsplatz, dessen NX Open Python und der Zugriff auf Block Styler. Die installierte Python-Version in der NX-Hilfe beziehungsweise mit einem kurzen Journal `import sys; print(sys.version)` prüfen. Der Kern benötigt nur `math`; der Adapter zusätzlich `pathlib` und `NXOpen`. Keine externe Python-Umgebung in den NX-Prozess injizieren.
+Use NX 2412, NX Open Python, and access to Block Styler. Check the bundled Python version in the NX help or by playing a journal containing `import sys; print(sys.version)`. The core uses Python's standard library. The adapter also uses `pathlib` and `NXOpen`. Check designer and journal access with the workstation or license administrator. These sources include neither vendor libraries nor licenses.
 
-Die tatsächlich nötigen NX-Open-/Block-Styler-Autorisierungen hängen von Installation und Lizenzkonfiguration ab. Vor Ort prüfen, ob der Designer geöffnet und das generierte Beispiel abgespielt werden kann; hier wurde weder ein Lizenzserver erreicht noch eine konkrete Lizenz-SKU bestätigt. Keine Lizenz oder Herstellerbibliothek wird mitgeliefert.
+## 1. Prepare the files
 
-## 1. Quellen vorbereiten
+1. Copy the repository or extract the source preview into a local test folder. Keep the repository structure, including `cad/nx/wrinkle_dialog.py` and `wrinkle/core.py`.
+2. Open a blank test part in NX. The numeric inputs use mm regardless of the part units.
+3. To check the numerical reference outside NX, run `python -m wrinkle 40 30 --thickness 2`.
 
-Repository in einen lokalen Testordner kopieren oder den geprüften Source-Preview entpacken. Ordnerstruktur erhalten: `cad/nx/wrinkle_dialog.py` und `wrinkle/core.py` müssen zwei Ebenen auseinander liegen. Für diesen Test ein leeres Testteil in **mm** öffnen; die Zahlen sind unabhängig von Teil-Einheiten immer mm. Bestehende Kundenteile werden nicht benötigt.
+## 2. Build the dialog in Block Styler
 
-Optional außerhalb NX die Referenzrechnung mit `python -m wrinkle 40 30 --thickness 2` prüfen. Das bestätigt keine NX-Funktion.
+Open **Block Styler** in the NX command finder. Create a dialog with **OK / Apply / Cancel** and use **Wrinkle Calculator - Source Preview** as its title. Add a group called `inputs` and configure the controls below with the exact IDs. Use plain numbers in mm for these controls.
 
-## 2. Native Maske im Block Styler erstellen
-
-In NX den Befehl **Block Styler** über den Befehlsfinder öffnen (Menüpfade hängen von Rolle/Sprache ab). Neues Dialoglayout erstellen, Dialogtyp mit **OK / Apply / Cancel** wählen. Titel `Faltenrechner - Source Preview - CAD ungetestet`. Eine Gruppe `inputs` anlegen. Folgende Blöcke hinzufügen; **Block-ID exakt übernehmen**, keine Expressions mit Teil-Einheiten verwenden:
-
-| Block-ID | Typ | Beschriftung | Startwert |
+| Block ID | Type | Label | Initial value |
 |---|---|---|---:|
-| l1_mm | Double | Abgewickelte Laenge l1 [mm] | 40 |
-| l2_mm | Double | Projizierte Breite l2 [mm] | 30 |
-| use_thickness | Toggle / Check Box (boolesches Value) | Dickenabschaetzung aktivieren | false |
-| thickness_mm | Double | Optionale Wanddicke [mm] | 2 |
+| `l1_mm` | Double | Developed target length l1 [mm] | 40 |
+| `l2_mm` | Double | Projected width l2 [mm] | 30 |
+| `use_thickness` | Toggle / Check Box with Boolean `Value` | Estimate strain from wall thickness | false |
+| `thickness_mm` | Double | Optional wall thickness [mm] | 2 |
 
-Für Längenblöcke Min 0,001 und Max 1.000.000 einstellen, Dicke Min 0 und Max 1.000.000. Die Kernprüfung bleibt maßgeblich. Als Hinweislabel ergänzen: `Excel-Standard: 1000 Segmente; Formfit ohne Laengenbedingung; keine Materialfreigabe.`
+Set limits of 0.001 to 1,000,000 mm for the lengths and 0 to 1,000,000 mm for thickness. The calculation core also validates the inputs. Add a note identifying the 1,000-segment Excel method and the fit without a length constraint.
 
-Layout **als `cad/nx/wrinkle.dlx` im Testordner** speichern. Python-Beispielcode durch den Designer separat generieren lassen und prüfen, dass er `UI.CreateDialog`, `TopBlock.FindBlock`, `Double.Value`, boolesches `.Value` und die Handler `AddInitializeHandler`, `AddApplyHandler`, `AddOkHandler` in der installierten NX-Version verwendet. Falls der Toggle in diesem Designer anders heißt, den vom Designer erzeugten Block mit booleschem `Value` verwenden. Bei abweichenden Signaturen anhalten und Abweichung protokollieren; dieser Schritt ist die noch ausstehende API-/Importprüfung.
+Save the layout as **`cad/nx/wrinkle.dlx`** in the test folder. Generate sample Python code in the designer and compare its calls with the adapter. Check `UI.CreateDialog`, `TopBlock.FindBlock`, the `Double.Value` and Boolean `Value` properties, and the `AddInitializeHandler`, `AddApplyHandler`, and `AddOkHandler` signatures. Record any differences in the installed NX version before running the adapter. The adapter loads the DLX next to the script by its absolute path.
 
-Der mitgelieferte Adapter verwendet ausschließlich diese Schnittstellen, `ListingWindow` und `NXMessageBox`. Er sucht die DLX über den absoluten Pfad neben sich. Keine Suchpfad- oder globale NX-Konfiguration erforderlich.
+## 3. Play and validate the journal
 
-## 3. Journal abspielen
+1. Find **Journal > Play** in NX and select `cad/nx/wrinkle_dialog.py`.
+2. Expect the native dialog. If the DLX is missing, expect an error that identifies the missing layout.
+3. **Apply** calculates and writes the values to the NX Listing Window and result message. **OK** calculates and closes after a successful callback. **Cancel** closes the dialog.
+4. Enter `40 / 30 / 2` with the wall thickness option on. Check A ≈ 6.139413268 mm, R ≈ 5.0322554 mm, height ≈ 12.2342750 mm, angle ≈ 49.8407463°, and straight segment length ≈ 11.3319680 mm per side. The fitted polyline length is approximately 40.1738373 mm and the analytical fit length is approximately 40.1738725 mm.
+5. Verify the **+0.434593%** length deviation, the missed 0.1% target, the RMS shape deviation of 0.096220 mm, and the maximum vertical shape deviation of 0.181006 mm. Check that the Excel and corrected cosine strain estimates appear separately.
+6. Try `30 / 30` for the flat case, then `80 / 60 / 4` to check scaling. Turn off thickness to check that no strain estimate is reported. Try `29 / 30`, `l1 > 2*l2`, and negative thickness with the option on. Each invalid input should produce an error.
+7. Test repeated **Apply**, **OK**, **Cancel**, and reopening. Record your NX and Windows builds, Python version, layout and licensing checks, inputs and results. Verify that part geometry and document state remain unchanged. Distribute a native DLX only after validating it in the target NX version.
 
-Über **Journal > Play** im Befehlsfinder `cad/nx/wrinkle_dialog.py` auswählen. Erwartet wird die native Maske; fehlt die DLX, muss eine verständliche Fehlermeldung erscheinen. **Apply** berechnet und schreibt die Ergebnisse in Listing Window und NX-Dialog; **OK** berechnet und schließt nach erfolgreichem Callback. Cancel schließt. Diese UI-Vorgänge sind hier noch nicht beobachtet worden.
-
-## 4. Abnahme am Arbeitsplatz
-
-1. NX-Build, Betriebssystem, eingebettete Python-Version und verfügbare Lizenzfunktionen notieren.
-2. 40 / 30 / 2 mit aktivierter Dickenabschätzung: A ≈6,139413268; R ≈5,0322554; Höhe ≈12,2342750; φ ≈49,8407463°; Gerade je Seite ≈11,3319680 mm. Polygon ≈40,1738373 und analytisch ≈40,1738725 mm.
-3. Anzeige der Längenabweichung **+0,434593 %** und des nicht erreichten 0,1-%-Ziels kontrollieren. Form-RMS ≈0,096220, Maximum ≈0,181006 mm. Excel-/korrigierte Kosinusabschätzungen müssen getrennt sein.
-4. 30 / 30: Höhe und Fehler null, Radien `entfaellt`. Dicke ausgeschaltet: keine Dehnungszahlen. 80 / 60 / 4: dimensionale Ergebnisse verdoppelt, relative Fehler und Dehnung gleich.
-5. 29 / 30, negative Dicke bei aktivierter Option und l1 >2*l2: Eingabe zurückweisen; kein alter Ergebniswert als neue Berechnung ausgeben.
-6. Apply mehrfach, OK, Cancel und erneutes Öffnen testen. Prüfen, dass Teilnavigator, Geometrieanzahl und Änderungsstatus unverändert bleiben. Der Quellcode enthält keine Geometrieaufrufe; dies ersetzt diese CAD-Prüfung nicht.
-7. Eingaben und Ergebnisse in einem neuen Testprotokoll festhalten; Original-Excel nicht anhängen oder in Git kopieren. Erst danach native DLX-Verteilung separat prüfen.
-
-Offizielle versionsgebundene Referenz ist die mit NX 2412 installierte **NX Open Python Reference / Block UI Styler** beziehungsweise der [Siemens Support Center](https://support.sw.siemens.com/). Die geschützte aktuelle API-Dokumentation war hier nicht zuverlässig zugänglich; ältere oder fremde Spiegel wurden nicht als Nachweis für NX 2412 verwendet.
+Consult the NX 2412 help under **NX Open Python Reference / Block UI Styler** for your installation. [Siemens Support](https://support.sw.siemens.com/)

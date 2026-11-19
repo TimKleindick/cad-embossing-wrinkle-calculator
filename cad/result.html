@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
-<title>Faltengeometrie &middot; Ergebnis</title>
+<title>Wrinkle geometry &middot; Results</title>
 <style>
 :root{color-scheme:light;font:16px/1.45 system-ui,sans-serif;color:#142732;background:#edf2f3}
 body{margin:0}main{max-width:1100px;margin:0 auto;padding:32px 20px 52px}
@@ -28,36 +28,36 @@ td.value{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right;f
 <body>
 <main>
 <header>
-<h1>Faltengeometrie</h1>
-<p>Eine Periode mit Kosinus-Referenz und Kreisbogenprofil</p>
+<h1>Wrinkle geometry</h1>
+<p>One period of the cosine reference and the fitted profile</p>
 </header>
 <figure>
-<h2>Profil und Ma&szlig;e</h2>
+<h2>Profile and dimensions</h2>
 <div class="plot">
-<canvas id="profile" width="900" height="350" role="img" aria-label="Skizze der Faltengeometrie mit den Ma&szlig;en A, l1, l2, h, R, &phi; und s">
-Die Ma&szlig;e und ihre Definitionen stehen in der Tabelle.
+<canvas id="profile" width="900" height="350" role="img" aria-label="Wrinkle profile with dimensions A, l1, l2, h, R, &phi; and s">
+The dimensions and their definitions are listed in the table.
 </canvas>
 </div>
 <figcaption>
-<span><i class="key cosine"></i>Kosinus-Referenz mit Soll-L&auml;nge l<sub>1</sub></span>
-<span><i class="key"></i>Profil aus drei Kreisb&ouml;gen und zwei Geraden</span>
-<span><i class="key tangent"></i>Gerade s auf jeder Seite</span>
+<span><i class="key cosine"></i>Cosine reference with target length l<sub>1</sub></span>
+<span><i class="key"></i>Fitted profile with three arcs and two straight segments</span>
+<span><i class="key tangent"></i>Straight segment s on each side</span>
 </figcaption>
 </figure>
 <div class="sections">
 <section class="primary" aria-labelledby="geometry-title">
-<h2 id="geometry-title">Was bedeuten die Ma&szlig;e?</h2>
+<h2 id="geometry-title">What do the dimensions mean?</h2>
 <table aria-labelledby="geometry-title"><tbody id="geometry"></tbody></table>
 </section>
 <section aria-labelledby="deviation-title">
-<h2 id="deviation-title">L&auml;ngen- und Formvergleich</h2>
+<h2 id="deviation-title">Length and shape comparison</h2>
 <table aria-labelledby="deviation-title"><tbody id="deviation"></tbody></table>
 <p class="note" id="length-target"></p>
 </section>
 <section aria-labelledby="strain-title">
-<h2 id="strain-title">Radien und Dehnungsabsch&auml;tzung</h2>
+<h2 id="strain-title">Radii and strain estimates</h2>
 <table aria-labelledby="strain-title"><tbody id="strain"></tbody></table>
-<p class="note">Vereinfachte Absch&auml;tzung nach t/(2r). Daraus folgt keine Materialfreigabe oder Aussage zur Risssicherheit.</p>
+<p class="note">Simplified t/(2r) estimate. Material approval and crack safety are outside its scope.</p>
 </section>
 </div>
 </main>
@@ -66,7 +66,7 @@ Die Ma&szlig;e und ihre Definitionen stehen in der Tabelle.
 'use strict';
 const {l1, l2, thickness, values, fit} = JSON.parse(document.getElementById('result-data').textContent);
 const [amplitude, radius, height, angle, straight] = values;
-const format = new Intl.NumberFormat('de-DE', {maximumFractionDigits: 9, useGrouping: false});
+const format = new Intl.NumberFormat('en-GB', {maximumFractionDigits: 9, useGrouping: false});
 function table(id, rows) {
   const body = document.getElementById(id);
   for (const [label, definition, value, unit] of rows) {
@@ -82,32 +82,32 @@ function table(id, rows) {
   }
 }
 table('geometry', [
-  ['l\u2081 \u00b7 Abgewickelte Soll-L\u00e4nge', 'Weg entlang der Kosinus-Referenz zwischen den Endpunkten, als Polygon mit 1000 Segmenten gemessen.', l1, 'mm'],
-  ['l\u2082 \u00b7 Projizierte Breite', 'Waagerechter Abstand zwischen den Endpunkten des Profils.', l2, 'mm'],
-  ['A \u00b7 Kosinus-Amplitude', 'Abstand von der Kosinus-Mittellinie zum Scheitel. Von der Grundlinie zum Kosinus-Scheitel sind es 2A.', amplitude, 'mm'],
-  ['h \u00b7 Profilh\u00f6he', 'Senkrechter Abstand von der Grundlinie zum Scheitel des angepassten Kreisprofils.', height, 'mm'],
-  ['R \u00b7 Kreisbogenradius', 'Gemeinsamer Radius der drei B\u00f6gen des angepassten Profils.', radius, 'mm'],
-  ['\u03c6 \u00b7 Neigungswinkel', 'Steigung der geraden Flanke als Winkel gegen die Waagerechte.', angle, '\u00b0'],
-  ['s \u00b7 Gerade je Seite', 'L\u00e4nge des geraden Verbindungsst\u00fccks zwischen zwei Kreisb\u00f6gen.', straight, 'mm']
+  ['l\u2081 \u00b7 Developed target length', 'Length along the cosine reference from end to end, measured as a 1,000-segment polyline.', l1, 'mm'],
+  ['l\u2082 \u00b7 Projected width', 'Horizontal distance between the profile endpoints.', l2, 'mm'],
+  ['A \u00b7 Cosine amplitude', 'Vertical distance from the cosine midline to its crest. The cosine crest is 2A above the baseline.', amplitude, 'mm'],
+  ['h \u00b7 Fitted profile height', 'Vertical distance from the baseline to the crest of the fitted profile.', height, 'mm'],
+  ['R \u00b7 Arc radius', 'Common radius of the three arcs in the fitted profile.', radius, 'mm'],
+  ['\u03c6 \u00b7 Flank angle', 'Angle between the straight flank and the horizontal.', angle, '\u00b0'],
+  ['s \u00b7 Straight length per side', 'Length of the straight segment between two arcs.', straight, 'mm']
 ]);
 table('deviation', [
-  ['L\u00e4nge des Fit-Polygons', '', values[5], 'mm'],
-  ['Analytische Fit-L\u00e4nge', '', values[6], 'mm'],
-  ['L\u00e4ngenabweichung gegen l\u2081', '', values[7], '%'],
-  ['Vertikale Formabweichung RMS', '', values[8], 'mm'],
-  ['Max. vertikale Formabweichung (St\u00fctzstellen)', '', values[9], 'mm']
+  ['Fitted polyline length', '', values[5], 'mm'],
+  ['Analytic fitted length', '', values[6], 'mm'],
+  ['Length deviation from l\u2081', '', values[7], '%'],
+  ['RMS vertical profile deviation', '', values[8], 'mm'],
+  ['Maximum vertical deviation at sample points', '', values[9], 'mm']
 ]);
 const target = document.getElementById('length-target');
 const meetsTarget = Math.abs(values[7]) < 0.1;
-target.textContent = meetsTarget ? 'L\u00e4ngenziel < 0,1 % erreicht.' : 'L\u00e4ngenziel < 0,1 % nicht erreicht.';
+target.textContent = meetsTarget ? 'Length deviation is below 0.1%.' : 'Length deviation reaches or exceeds 0.1%.';
 if (!meetsTarget) target.classList.add('warning');
 table('strain', [
-  ['Optionale Wanddicke t', '', thickness, 'mm'],
-  ['Kosinus-Radius nach Excel', '', values[10], 'mm'],
-  ['Korrigierter Kosinus-Radius', '', values[11], 'mm'],
-  ['Kreisbogen-Dehnungsabsch\u00e4tzung', '', values[12], '%'],
-  ['Excel-Kosinus-Dehnungsabsch\u00e4tzung', '', values[13], '%'],
-  ['Korrigierte Kosinus-Dehnungsabsch\u00e4tzung', '', values[14], '%']
+  ['Optional wall thickness t', '', thickness, 'mm'],
+  ['Cosine radius using the Excel formula', '', values[10], 'mm'],
+  ['Corrected cosine radius', '', values[11], 'mm'],
+  ['Circular arc strain estimate', '', values[12], '%'],
+  ['Cosine strain using the Excel radius', '', values[13], '%'],
+  ['Cosine strain using the corrected radius', '', values[14], '%']
 ]);
 const canvas = document.getElementById('profile');
 const ctx = canvas.getContext('2d');
@@ -147,13 +147,13 @@ curve(fit, green, []);
 const cosine = Array.from({length: 1001}, (_, i) => amplitude * (1 - Math.cos(2 * Math.PI * i / 1000)));
 curve(cosine, blue, [8, 6]);
 if (radius === null) {
-  label('Flaches Profil: A = h = 0, l\u2081 = l\u2082', midX, 246);
+  label('Flat profile: A = h = 0, l\u2081 = l\u2082', midX, 246);
 } else {
   const topCosine = y(2 * amplitude), topFit = y(height);
   const halfHeight = y(amplitude), ampX = left - 30, heightX = right + 30;
   const targetX = x(.28 * l2), targetY = y(cosine[280]);
   line(x(.11 * l2), 39, targetX, targetY, blue, [4, 4]);
-  label('l\u2081 entlang der Kurve', x(.11 * l2), 31, blue);
+  label('l\u2081 along the curve', x(.11 * l2), 31, blue);
   if (baseline - topFit >= 20) {
     line(midX, topFit, heightX, topFit, '#96aab2', [4, 4]);
     line(right, baseline, heightX, baseline, '#96aab2', [4, 4]);

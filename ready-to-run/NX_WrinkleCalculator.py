@@ -179,46 +179,278 @@ def calculate(l1, l2, thickness=None, segments=1000):
         result[key] = None if thickness is None else 100*(thickness/l2)/(2*radius)
     return result
 
+REPORT_TEMPLATE = (
+    '<!doctype html>\n'
+    '<html lang="en">\n'
+    '<head>\n'
+    '<meta charset="utf-8">\n'
+    '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+    '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; script-src \'unsafe-inline\'">\n'
+    '<title>Wrinkle geometry &middot; Results</title>\n'
+    '<style>\n'
+    ':root{color-scheme:light;font:16px/1.45 system-ui,sans-serif;color:#142732;background:#edf2f3}\n'
+    'body{margin:0}main{max-width:1100px;margin:0 auto;padding:32px 20px 52px}\n'
+    'h1{margin:0 0 6px;font-size:clamp(1.8rem,4vw,2.6rem);letter-spacing:-.035em}\n'
+    'h2{margin:0 0 8px;font-size:1.16rem}p{margin:0;color:#465c66}\n'
+    'figure,section{margin:20px 0 0;background:#fff;border:1px solid #d7e2e5;border-radius:12px;padding:18px}\n'
+    '.plot{overflow-x:auto}canvas{width:100%;min-width:640px;height:auto;display:block}\n'
+    'figcaption{display:flex;gap:12px 26px;flex-wrap:wrap;color:#364d59;font-size:.9rem}\n'
+    '.key{display:inline-block;width:24px;margin-right:8px;border-top:3px solid #03796d;vertical-align:middle}\n'
+    '.cosine{border-color:#4151aa;border-top-style:dashed}.tangent{border-color:#a45315}\n'
+    '.sections{display:grid;grid-template-columns:1fr 1fr;gap:16px}.sections section{min-width:0}\n'
+    'section.primary{grid-column:1/-1}\n'
+    'table{width:100%;border-collapse:collapse;font-size:.94rem}\n'
+    'th,td{padding:7px 0;border-bottom:1px solid #e7eef0;text-align:left;vertical-align:top}\n'
+    'tr:last-child th,tr:last-child td{border-bottom:0}th{padding-right:12px;font-weight:600;width:30%}\n'
+    'td.value{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right;font-weight:650}\n'
+    '.note{margin-top:10px;font-size:.87rem}.warning{color:#8d3b12;font-weight:650}\n'
+    '@media(max-width:720px){.sections{display:block}th,td{padding:6px 3px}}\n'
+    '</style>\n'
+    '</head>\n'
+    '<body>\n'
+    '<main>\n'
+    '<header>\n'
+    '<h1>Wrinkle geometry</h1>\n'
+    '<p>One period of the cosine reference and the fitted profile</p>\n'
+    '</header>\n'
+    '<figure>\n'
+    '<h2>Profile and dimensions</h2>\n'
+    '<div class="plot">\n'
+    '<canvas id="profile" width="900" height="350" role="img" aria-label="Wrinkle profile with dimensions A, l1, l2, h, R, &phi; and s">\n'
+    'The dimensions and their definitions are listed in the table.\n'
+    '</canvas>\n'
+    '</div>\n'
+    '<figcaption>\n'
+    '<span><i class="key cosine"></i>Cosine reference with target length l<sub>1</sub></span>\n'
+    '<span><i class="key"></i>Fitted profile with three arcs and two straight segments</span>\n'
+    '<span><i class="key tangent"></i>Straight segment s on each side</span>\n'
+    '</figcaption>\n'
+    '</figure>\n'
+    '<div class="sections">\n'
+    '<section class="primary" aria-labelledby="geometry-title">\n'
+    '<h2 id="geometry-title">What do the dimensions mean?</h2>\n'
+    '<table aria-labelledby="geometry-title"><tbody id="geometry"></tbody></table>\n'
+    '</section>\n'
+    '<section aria-labelledby="deviation-title">\n'
+    '<h2 id="deviation-title">Length and shape comparison</h2>\n'
+    '<table aria-labelledby="deviation-title"><tbody id="deviation"></tbody></table>\n'
+    '<p class="note" id="length-target"></p>\n'
+    '</section>\n'
+    '<section aria-labelledby="strain-title">\n'
+    '<h2 id="strain-title">Radii and strain estimates</h2>\n'
+    '<table aria-labelledby="strain-title"><tbody id="strain"></tbody></table>\n'
+    '<p class="note">Simplified t/(2r) estimate. Material approval and crack safety are outside its scope.</p>\n'
+    '</section>\n'
+    '</div>\n'
+    '</main>\n'
+    '<script id="result-data" type="application/json">{{DATA}}</script>\n'
+    '<script>\n'
+    "'use strict';\n"
+    "const {l1, l2, thickness, values, fit} = JSON.parse(document.getElementById('result-data').textContent);\n"
+    'const [amplitude, radius, height, angle, straight] = values;\n'
+    "const format = new Intl.NumberFormat('en-GB', {maximumFractionDigits: 9, useGrouping: false});\n"
+    'function table(id, rows) {\n'
+    '  const body = document.getElementById(id);\n'
+    '  for (const [label, definition, value, unit] of rows) {\n'
+    '    const row = body.insertRow();\n'
+    "    const header = document.createElement('th');\n"
+    "    header.scope = 'row';\n"
+    '    header.textContent = label;\n'
+    '    row.append(header);\n'
+    '    if (definition) row.insertCell().textContent = definition;\n'
+    '    const cell = row.insertCell();\n'
+    "    cell.className = 'value';\n"
+    "    cell.textContent = value === null ? '\\u2013' : `${format.format(value)} ${unit}`;\n"
+    '  }\n'
+    '}\n'
+    "table('geometry', [\n"
+    "  ['l\\u2081 \\u00b7 Developed target length', 'Length along the cosine reference from end to end, measured as a 1,000-segment polyline.', l1, 'mm'],\n"
+    "  ['l\\u2082 \\u00b7 Projected width', 'Horizontal distance between the profile endpoints.', l2, 'mm'],\n"
+    "  ['A \\u00b7 Cosine amplitude', 'Vertical distance from the cosine midline to its crest. The cosine crest is 2A above the baseline.', amplitude, 'mm'],\n"
+    "  ['h \\u00b7 Fitted profile height', 'Vertical distance from the baseline to the crest of the fitted profile.', height, 'mm'],\n"
+    "  ['R \\u00b7 Arc radius', 'Common radius of the three arcs in the fitted profile.', radius, 'mm'],\n"
+    "  ['\\u03c6 \\u00b7 Flank angle', 'Angle between the straight flank and the horizontal.', angle, '\\u00b0'],\n"
+    "  ['s \\u00b7 Straight length per side', 'Length of the straight segment between two arcs.', straight, 'mm']\n"
+    ']);\n'
+    "table('deviation', [\n"
+    "  ['Fitted polyline length', '', values[5], 'mm'],\n"
+    "  ['Analytic fitted length', '', values[6], 'mm'],\n"
+    "  ['Length deviation from l\\u2081', '', values[7], '%'],\n"
+    "  ['RMS vertical profile deviation', '', values[8], 'mm'],\n"
+    "  ['Maximum vertical deviation at sample points', '', values[9], 'mm']\n"
+    ']);\n'
+    "const target = document.getElementById('length-target');\n"
+    'const meetsTarget = Math.abs(values[7]) < 0.1;\n'
+    "target.textContent = meetsTarget ? 'Length deviation is below 0.1%.' : 'Length deviation reaches or exceeds 0.1%.';\n"
+    "if (!meetsTarget) target.classList.add('warning');\n"
+    "table('strain', [\n"
+    "  ['Optional wall thickness t', '', thickness, 'mm'],\n"
+    "  ['Cosine radius using the Excel formula', '', values[10], 'mm'],\n"
+    "  ['Corrected cosine radius', '', values[11], 'mm'],\n"
+    "  ['Circular arc strain estimate', '', values[12], '%'],\n"
+    "  ['Cosine strain using the Excel radius', '', values[13], '%'],\n"
+    "  ['Cosine strain using the corrected radius', '', values[14], '%']\n"
+    ']);\n'
+    "const canvas = document.getElementById('profile');\n"
+    "const ctx = canvas.getContext('2d');\n"
+    'const scale = Math.min(650 / l2, 224 / Math.max(height, 2 * amplitude, l2 * .01));\n'
+    'const left = (900 - l2 * scale) / 2;\n'
+    'const x = distance => left + distance * scale;\n'
+    'const y = ordinate => 276 - ordinate * scale;\n'
+    "const ink = '#334d5b', blue = '#4151aa', green = '#03796d', orange = '#a45315';\n"
+    'function line(x1, y1, x2, y2, color = ink, dash = [], width = 1.3) {\n'
+    '  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash);\n'
+    '  ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]);\n'
+    '}\n'
+    'function label(text, px, py, color = ink) {\n'
+    "  ctx.font = '600 17px system-ui'; ctx.fillStyle = color; ctx.textAlign = 'center';\n"
+    "  ctx.lineWidth = 5; ctx.strokeStyle = '#fff'; ctx.strokeText(text, px, py); ctx.fillText(text, px, py);\n"
+    '}\n'
+    'function dimension(x1, y1, x2, y2, color = ink) {\n'
+    '  line(x1, y1, x2, y2, color);\n'
+    '  const alpha = Math.atan2(y2 - y1, x2 - x1);\n'
+    '  for (const [px, py, sign] of [[x1, y1, 1], [x2, y2, -1]]) {\n'
+    '    for (const delta of [-.48, .48]) {\n'
+    '      line(px, py, px + sign * 8 * Math.cos(alpha + delta), py + sign * 8 * Math.sin(alpha + delta), color);\n'
+    '    }\n'
+    '  }\n'
+    '}\n'
+    'function curve(points, color, dash) {\n'
+    '  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.setLineDash(dash);\n'
+    '  points.forEach((v, i) => ctx.lineTo(x(l2 * i / (points.length - 1)), y(v)));\n'
+    '  ctx.stroke(); ctx.setLineDash([]);\n'
+    '}\n'
+    'const midX = x(l2 / 2), right = x(l2), baseline = y(0);\n'
+    "line(left, baseline, right, baseline, '#96aab2');\n"
+    "for (const edge of [left, right]) line(edge, baseline - 4, edge, 312, '#96aab2');\n"
+    'dimension(left, 306, right, 306);\n'
+    "label('l\\u2082', midX, 330);\n"
+    'curve(fit, green, []);\n'
+    'const cosine = Array.from({length: 1001}, (_, i) => amplitude * (1 - Math.cos(2 * Math.PI * i / 1000)));\n'
+    'curve(cosine, blue, [8, 6]);\n'
+    'if (radius === null) {\n'
+    "  label('Flat profile: A = h = 0, l\\u2081 = l\\u2082', midX, 246);\n"
+    '} else {\n'
+    '  const topCosine = y(2 * amplitude), topFit = y(height);\n'
+    '  const halfHeight = y(amplitude), ampX = left - 30, heightX = right + 30;\n'
+    '  const targetX = x(.28 * l2), targetY = y(cosine[280]);\n'
+    '  line(x(.11 * l2), 39, targetX, targetY, blue, [4, 4]);\n'
+    "  label('l\\u2081 along the curve', x(.11 * l2), 31, blue);\n"
+    '  if (baseline - topFit >= 20) {\n'
+    "    line(midX, topFit, heightX, topFit, '#96aab2', [4, 4]);\n"
+    "    line(right, baseline, heightX, baseline, '#96aab2', [4, 4]);\n"
+    '    dimension(heightX, topFit, heightX, baseline, green);\n'
+    "    label('h', heightX + 18, (topFit + baseline) / 2 + 6, green);\n"
+    '  }\n'
+    '  if (halfHeight - topCosine >= 20) {\n'
+    '    line(ampX, topCosine, midX, topCosine, blue, [4, 4]);\n'
+    '    line(ampX, halfHeight, midX, halfHeight, blue, [4, 4]);\n'
+    '    dimension(ampX, topCosine, ampX, halfHeight, blue);\n'
+    "    label('A', ampX - 16, (topCosine + halfHeight) / 2 + 5, blue);\n"
+    '  }\n'
+    '  const phi = angle * Math.PI / 180, xJoin = radius * Math.sin(phi);\n'
+    '  const yJoin = 2 * radius * Math.sin(phi / 2) ** 2;\n'
+    '  const innerJoin = l2 / 2 - xJoin;\n'
+    '  const innerY = yJoin + (innerJoin - xJoin) * Math.tan(phi);\n'
+    '  if ((innerJoin - xJoin) * scale >= 32 && baseline - topFit >= 24) {\n'
+    '    line(x(xJoin), y(yJoin), x(innerJoin), y(innerY), orange, [], 4);\n'
+    '    line(x(l2 - innerJoin), y(innerY), x(l2 - xJoin), y(yJoin), orange, [], 4);\n'
+    "    label('s', x(l2 - (xJoin + innerJoin) / 2) + 22, y((yJoin + innerY) / 2) + 20, orange);\n"
+    '    const startX = x(xJoin), startY = y(yJoin);\n'
+    '    line(startX, startY, startX + 52, startY, orange, [4, 3]);\n'
+    '    ctx.beginPath(); ctx.strokeStyle = orange; ctx.lineWidth = 1.3;\n'
+    '    ctx.arc(startX, startY, 35, -phi, 0); ctx.stroke();\n'
+    "    label('\\u03c6', startX + 56, startY - 7, orange);\n"
+    '  }\n'
+    '  const radiusCenterY = y(height - radius);\n'
+    '  if (radiusCenterY <= baseline && radiusCenterY - topFit >= 25) {\n'
+    '    dimension(midX, topFit, midX, radiusCenterY, green);\n'
+    "    label('R', midX + 18, (topFit + radiusCenterY) / 2 + 6, green);\n"
+    '  }\n'
+    '}\n'
+    '</script>\n'
+    '</body>\n'
+    '</html>\n'
+)
+
 """Windows dialog adapter for an inlined NX Python journal; NX integration untested.
 
-The generator places the unchanged pure core before this adapter. Only Windows
-system DLLs are loaded, at run time. No NX object, file, or geometry is modified.
+The generator places the pure core and shared report template before this adapter.
+The journal creates a local HTML report. It does not modify any NX documents.
 """
+import json
+from math import radians
+import os
 import re
 import struct
 import sys
+import tempfile
 
-WINDOW_TITLE = 'Faltenrechner - Source Preview - CAD ungetestet'
+WINDOW_TITLE = 'Wrinkle Geometry - Source Preview'
 
 
 def parse_decimal(text):
     text=text.strip()
     if len(text)>32 or not re.fullmatch(r'[+-]?[0-9]+(?:[.,][0-9]+)?',text):
-        raise ValueError('Zahl mit Punkt oder Komma eingeben; keine Tausendertrennzeichen/Exponenten.')
+        raise ValueError('Enter a number with a decimal point or comma. Do not use digit grouping or exponents.')
     return float(text.replace(',','.'))
 
 
 def format_report(result):
-    fields=[('amplitude_mm','A [mm]'),('radius_mm','R [mm]'),('height_mm','Hoehe [mm]'),
-            ('phi_deg','Winkel [deg]'),('straight_mm','Gerade je Seite [mm]'),
-            ('fit_polygon_mm','Excel-Polygonlaenge [mm]'),('fit_analytic_mm','Analytische Fitlaenge [mm]'),
-            ('length_error_pct','Polygon-Laengenabweichung [%]'),
-            ('analytic_length_error_pct','Analytische Laengenabweichung [%]'),
-            ('rms_form_error_mm','Vertikale Formabweichung RMS [mm]'),
-            ('max_form_error_mm','Max. vertikale Formabweichung [mm]'),
-            ('cosine_radius_excel_mm','Excel-Kosinusradius [mm]'),
-            ('cosine_radius_corrected_mm','Korrigierter Kosinusradius [mm]'),
-            ('cosine_strain_excel_pct','Excel-Dehnungsabschaetzung [%]'),
-            ('cosine_strain_corrected_pct','Korrigierte Kosinusabschaetzung [%]'),
-            ('arc_strain_pct','Kreisbogen-Dehnungsabschaetzung [%]')]
-    lines=['Excel: 1000 Segmente; Formfit ohne Laengenbedingung.']
+    fields=[('l1_mm','Developed target length l1 [mm]'),('l2_mm','Projected width l2 [mm]'),
+            ('amplitude_mm','Cosine amplitude A [mm]'),('radius_mm','Arc radius R [mm]'),('height_mm','Height h [mm]'),
+            ('phi_deg','Flank angle [deg]'),('straight_mm','Straight length per side [mm]'),
+            ('fit_polygon_mm','Fitted polyline length [mm]'),('fit_analytic_mm','Analytic fitted length [mm]'),
+            ('length_error_pct','Polyline length deviation [%]'),
+            ('analytic_length_error_pct','Analytic length deviation [%]'),
+            ('rms_form_error_mm','RMS vertical profile deviation [mm]'),
+            ('max_form_error_mm','Maximum vertical deviation at sample points [mm]'),
+            ('cosine_radius_excel_mm','Cosine radius using the Excel formula [mm]'),
+            ('cosine_radius_corrected_mm','Corrected cosine radius [mm]'),
+            ('cosine_strain_excel_pct','Cosine strain using the Excel radius [%]'),
+            ('cosine_strain_corrected_pct','Cosine strain using the corrected radius [%]'),
+            ('arc_strain_pct','Circular arc strain estimate [%]')]
+    lines=['Excel method with 1,000 segments and no fitted-length constraint.']
     for key,label in fields:
         value=result[key]
-        lines.append(label+': '+('entfaellt / nicht angegeben' if value is None else format(value,'.9f')))
+        lines.append(label+': '+('Not applicable or not provided' if value is None else format(value,'.9f')))
     if abs(result['length_error_pct'])>=.1:
-        lines.append('Laengenziel <0.1% NICHT erreicht; Excel-Standard unveraendert.')
-    lines.append('Dehnung: stark vereinfachtes t/(2r)-Modell; keine Materialfreigabe oder Risssicherheitsaussage.')
+        lines.append('Length deviation reaches or exceeds 0.1%.')
+    lines.append('Simplified t/(2r) estimate. Material approval and crack safety are outside its scope.')
     return '\r\n'.join(lines)
+
+
+def render_illustrated_report(result, thickness):
+    """Use the result-data schema shared with the CATScript launcher."""
+    fields = (
+        'amplitude_mm', 'radius_mm', 'height_mm', 'phi_deg', 'straight_mm',
+        'fit_polygon_mm', 'fit_analytic_mm', 'length_error_pct',
+        'rms_form_error_mm', 'max_form_error_mm', 'cosine_radius_excel_mm',
+        'cosine_radius_corrected_mm', 'arc_strain_pct', 'cosine_strain_excel_pct',
+        'cosine_strain_corrected_pct', 'vertical_sse_mm2', 'segments',
+    )
+    span = result['l2_mm']
+    radius = result['radius_mm']
+    phi = radians(result['phi_deg'])
+    if radius is None:
+        fit = [0] * 201
+    else:
+        fit = [profile_y(span * (i / 200), span, radius, phi) for i in range(201)]
+    data = {
+        'l1': result['l1_mm'], 'l2': span, 'thickness': thickness,
+        'values': [result[field] for field in fields], 'fit': fit,
+    }
+    return REPORT_TEMPLATE.replace('{{DATA}}', json.dumps(data, allow_nan=False))
+
+
+def open_illustrated_report(result, thickness, opener=None):
+    open_file = opener if opener is not None else getattr(os, 'startfile', None)
+    if open_file is None:
+        raise OSError('No Windows file opener is available.')
+    with tempfile.NamedTemporaryFile(mode='w', encoding='ascii', prefix='Wrinkle-geometry-',
+                                     suffix='.html', delete=False) as report:
+        report.write(render_illustrated_report(result, thickness))
+    open_file(report.name)
 
 
 def dialog_template():
@@ -231,17 +463,17 @@ def dialog_template():
     tab=0x10000
     # id, standard control class atom, text, x,y,w,h, style, extended style
     controls=[
-        (10001,0x82,'Abgewickelte Laenge l1 [mm]',12,12,150,14,0,0),
+        (10001,0x82,'Developed target length l1 [mm]',12,12,150,14,0,0),
         (101,0x81,'40',174,10,95,16,tab|0x80,0x200),
-        (10002,0x82,'Projizierte Breite l2 [mm]',12,36,150,14,0,0),
+        (10002,0x82,'Projected width l2 [mm]',12,36,150,14,0,0),
         (102,0x81,'30',174,34,95,16,tab|0x80,0x200),
-        (104,0x80,'Dickenabschaetzung aktivieren',12,60,250,14,tab|3,0),
-        (10003,0x82,'Wanddicke [mm]',12,84,150,14,0,0),
+        (104,0x80,'Estimate strain from wall thickness',12,60,250,14,tab|3,0),
+        (10003,0x82,'Wall thickness [mm]',12,84,150,14,0,0),
         (103,0x81,'2',174,82,95,16,tab|0x80,0x200),
-        (1,0x80,'Berechnen',304,10,68,20,tab|1,0),
-        (2,0x80,'Schliessen',382,10,72,20,tab,0),
-        (10004,0x82,'SOURCE PREVIEW - NX-Laufzeit/Installation ungetestet',12,110,440,14,0,0),
-        (201,0x81,'Berechnen zeigt Ergebnisse. Punkt oder Komma als Dezimaltrenner.',12,132,442,186,
+        (1,0x80,'Calculate',304,10,68,20,tab|1,0),
+        (2,0x80,'Close',382,10,72,20,tab,0),
+        (10004,0x82,'SOURCE PREVIEW - NX runtime and installation untested',12,110,440,14,0,0),
+        (201,0x81,'Calculate opens the illustrated report. Use a decimal point or comma.',12,132,442,186,
          tab|0x4|0x40|0x800|0x200000|0x100000|0x80,0x200),
     ]
     for ident,atom,text,x,y,w,h,flags,extended in controls:
@@ -251,9 +483,9 @@ def dialog_template():
     return data
 
 
-def run_dialog(owner=None):
+def run_dialog(owner=None, open_file=None):
     if sys.platform!='win32':
-        raise RuntimeError('Dieser vorbereitete NX-Einstieg benoetigt Windows und Python ctypes.')
+        raise RuntimeError('This NX journal requires Windows and Python ctypes.')
     import ctypes
     from ctypes import wintypes as w
     user=ctypes.WinDLL('user32',use_last_error=True)
@@ -287,9 +519,15 @@ def run_dialog(owner=None):
             if message==0x111 and (wp&0xffff)==1:  # IDOK: calculate, keep dialog open
                 try:
                     thickness=read(hwnd,103) if user.IsDlgButtonChecked(hwnd,104)==1 else None
-                    text=format_report(calculate(read(hwnd,101),read(hwnd,102),thickness))
+                    result=calculate(read(hwnd,101),read(hwnd,102),thickness)
                 except (ValueError,ArithmeticError) as exc:
-                    text='Fehler: '+str(exc)+'\r\nKein Ergebnis freigegeben.'
+                    text='Error: '+str(exc)+'\r\nNo result.'
+                else:
+                    text=format_report(result)
+                    try:
+                        open_illustrated_report(result, thickness, opener=open_file)
+                    except (OSError, NotImplementedError):
+                        text+='\r\nCould not open the illustrated report. Results are shown above.'
                 user.SetDlgItemTextW(hwnd,201,text)
                 return 1
             return 0
@@ -303,7 +541,7 @@ def run_dialog(owner=None):
     if owner is None: owner=user.GetForegroundWindow()
     value=user.DialogBoxIndirectParamW(kernel.GetModuleHandleW(None),template,owner,callback,0)
     if value in (-1,0): raise ctypes.WinError(ctypes.get_last_error())
-    if failures: raise RuntimeError('Dialogfehler: '+failures[0])
+    if failures: raise RuntimeError('Dialog error: '+failures[0])
 
 
 if __name__=='__main__':

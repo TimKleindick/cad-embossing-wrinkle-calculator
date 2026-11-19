@@ -3,17 +3,17 @@
 Option Explicit
 
 Private Sub UserForm_Initialize()
-    Me.Caption = "Faltenrechner - Source Preview - CAD ungetestet"
+    Me.Caption = "Wrinkle Geometry - Source Preview"
     txtL1.Text = "40"
     txtL2.Text = "30"
     txtThickness.Text = "2"
     chkThickness.Value = False
-    txtResult.Text = "Excel-Standard: 1000 Segmente; Formfit ohne Laengenbedingung."
+    txtResult.Text = "Excel method with 1,000 segments and no fitted-length constraint."
 End Sub
 
 Private Function ShowNumber(ByVal v As Variant, ByVal unit As String) As String
     If IsEmpty(v) Then
-        ShowNumber = "entfaellt / nicht angegeben"
+        ShowNumber = "Not applicable or not provided"
     Else
         ShowNumber = Format$(v, "0.000000000") & " " & unit
     End If
@@ -26,22 +26,22 @@ Private Sub cmdCalculate_Click()
     thickness = Empty
     If chkThickness.Value Then thickness = CDbl(txtThickness.Text)
     values = WrinkleCalculate(CDbl(txtL1.Text), CDbl(txtL2.Text), thickness)
-    names = Array("A", "R", "Hoehe", "Winkel", "Gerade je Seite", "Excel-Polygonlaenge", _
-        "Analytische Fitlaenge", "Polygon-Laengenabweichung", "Vertikale Formabweichung RMS", _
-        "Max. vertikale Formabweichung", "Excel-Kosinusradius", "Korrigierter Kosinusradius", _
-        "Kreisbogen-Dehnungsabschaetzung", "Excel-Dehnungsabschaetzung", "Korrigierte Kosinusabschaetzung")
+    names = Array("A", "R", "Height h", "Flank angle", "Straight length per side", "Fitted polyline length", _
+        "Analytic fitted length", "Polyline length deviation", "RMS vertical profile deviation", _
+        "Maximum vertical deviation at sample points", "Cosine radius using the Excel formula", "Corrected cosine radius", _
+        "Circular arc strain estimate", "Cosine strain using the Excel radius", "Cosine strain using the corrected radius")
     units = Array("mm", "mm", "mm", "deg", "mm", "mm", "mm", "%", "mm", "mm", "mm", "mm", "%", "%", "%")
-    output = "SOURCE PREVIEW - CAD-Laufzeit/Import ungetestet" & vbCrLf
-    output = output & "Excel: 1000 Segmente, Formfit ohne Laengenbedingung" & vbCrLf
+    output = "SOURCE PREVIEW - CAD runtime and import untested" & vbCrLf
+    output = output & "Excel method with 1,000 segments and no fitted-length constraint" & vbCrLf
     For i = 0 To 14
         output = output & names(i) & ": " & ShowNumber(values(i), units(i)) & vbCrLf
     Next
-    If Abs(values(7)) >= 0.1 Then output = output & "Laengenziel <0.1% NICHT erreicht." & vbCrLf
-    output = output & "Dehnung: stark vereinfachtes t/(2r)-Modell; keine Materialfreigabe oder Risssicherheitsaussage."
+    If Abs(values(7)) >= 0.1 Then output = output & "Length deviation reaches or exceeds 0.1%." & vbCrLf
+    output = output & "Simplified t/(2r) estimate. Material approval and crack safety are outside its scope."
     txtResult.Text = output
     Exit Sub
 Failed:
-    txtResult.Text = "Fehler: " & Err.Description & vbCrLf & "Kein Ergebnis freigegeben."
+    txtResult.Text = "Error: " & Err.Description & vbCrLf & "No result."
 End Sub
 
 Private Sub cmdClose_Click()

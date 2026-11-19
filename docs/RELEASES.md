@@ -1,18 +1,18 @@
-# Quellpakete und sichere Releases
+# Source packages and releases
 
-Die Original-Excel enthält interne Metadaten und darf **nie** in Git, CI-Artefakte oder Releases. Sie ist kein Build-Eingang. Auch keine umbenannten Kopien, Screenshots, eingebetteten Daten oder historischen Excel-Binärdateien einbringen. Die hier erstellten Zahlenreferenzen stammen aus der Aufgabenstellung.
+The original Excel workbook contains internal metadata. Keep it out of Git, CI artifacts, and releases, including renamed copies, screenshots, embedded data, and historical Excel binaries. The build uses the supplied reference numbers and formulas.
 
-## Schutzübergänge
+## Package safeguards
 
-- `.gitignore` blockiert typische Excel-Dateinamen, auch Großschreibung. Das ist kein Schutz gegen `git add -f`; deshalb zusätzlich vor jedem Commit den Hook aktivieren: `git config core.hooksPath .githooks`.
-- `python tools/package_preview.py audit` prüft **staged Blob-Inhalte** aller regulären Git-Dateien: Dateinamen, UTF-8, Größe, ZIP/OLE-Magie und Workbook-XML. Das verhindert einen sauberen Working-Tree-Köder über einem unsicheren Index. Symlinks und Gitlinks werden abgelehnt. CI wiederholt den Audit.
-- `PACKAGE_FILES` in `tools/package_preview.py` ist eine explizite, einzeln benannte Positivliste. Keine Ordnerarchive, keine Wildcards, keine externen Dateien. Einzig `reference/cases.csv` ist als CSV freigegeben. Neu aufgenommene Inhalte benötigen menschliche Prüfung; technische Filter können interne Metadaten in beliebigem Klartext nicht semantisch erkennen.
-- Paketbau erfordert einen sauberen Commit. Fehlende Quellen, Symlinks, Workbook-Inhalte oder Fremdcontainer brechen vor der Ausgabe ab. Ein Manifest enthält Quell-Commit, CAD-Status und SHA-256 pro Datei. ZIP-Reihenfolge/Zeitstempel sind deterministisch. Die ZIP wird nach dem Bau erneut auf die genaue Positivliste und Prüfsummen geprüft.
-- Normale CI lädt **keine Artefakte** hoch. Nur der manuelle Preview-Release-Workflow überträgt genau ZIP und SHA256-Datei mit einem Tag Aufbewahrung zwischen Jobs. Der Publisher prüft Manifest, Quell-Commit und ZIP-Hash und unmittelbar vor Veröffentlichung die Tag-Zuordnung erneut und hängt genau diese zwei Dateien an.
+- `.gitignore` excludes common Excel filename patterns in either case. Because `git add -f` bypasses those patterns, enable the pre-commit hook with `git config core.hooksPath .githooks`.
+- `python tools/package_preview.py audit` inspects the **staged blob bytes** of all regular Git files. It checks names, UTF-8 encoding, size, ZIP/OLE signatures, and workbook XML. It rejects symlinks and Git links and catches an unsafe index even when the working tree looks clean. CI repeats the audit.
+- `PACKAGE_FILES` in `tools/package_preview.py` names each allowed source file explicitly. `reference/cases.csv` is the sole allowed CSV. Review additions to the allowlist because technical filters cannot identify sensitive metadata in arbitrary plain text.
+- Package creation requires a clean commit and stops before output if a file is missing or a symlink, workbook, or foreign container is detected. The manifest records the source commit, CAD test status, and each file's SHA-256. ZIP ordering and timestamps are deterministic. Verification rechecks the exact allowlist and checksums after creation.
+- The regular CI workflow uploads no artifacts. The manual preview release workflow passes the ZIP and SHA-256 file between jobs with one-day retention. Before publication, the publisher checks the manifest, source commit, ZIP hash, and tag target again. It attaches those two files.
 
-## Lokaler reproduzierbarer Build
+## Reproducible local build
 
-Aus einem sauberen, getesteten Git-Checkout:
+From a clean, tested Git checkout, run the following commands.
 
 ```sh
 python3 -m unittest discover -s tests -v
@@ -21,20 +21,20 @@ python3 tools/package_preview.py build
 python3 tools/package_preview.py verify
 ```
 
-Erzeugt `dist/wrinkle-source-preview.zip` und `.sha256`. `dist/` ist ignoriert. Vor erneutem Bau die vorherige Testausgabe außerhalb des Repositories ablegen oder gezielt entfernen; vorhandene Archive werden nicht überschrieben. Hashes belegen Integrität, keine Signatur oder CAD-Zertifizierung.
+The builder writes `dist/wrinkle-source-preview.zip` and `dist/wrinkle-source-preview.sha256`. Git ignores `dist/`. Move or remove the previous archive before rebuilding because the builder refuses to overwrite it. The checksums verify file integrity. Signatures and CAD certification are outside this build.
 
-## Manueller Preview-Release
+## Manual preview release
 
-**Dieser Erstauftrag erstellt keinen Tag, kein Release und keinen Merge.** Der Workflow ist dafür vorbereitet, seine Publikation wurde nicht ausgeführt.
+The source preview includes a manual publishing workflow. The release publishing path has yet to be exercised.
 
-1. Branch nach Review auf `main` übernehmen und dort sämtliche CI-Prüfungen bestehen lassen. Kein Workflow läuft mit `pull_request_target` oder `workflow_run`; PR-Code erhält keine Schreibrechte.
-2. Gewünschten geprüften `main`-Commit mit einem neuen Tag wie `v0.1.0-source-preview.1` markieren und den Tag pushen. Der Workflow erstellt oder verschiebt keine Tags.
-3. Unter Actions den Workflow `Source preview release (CAD untested)` **auf main** manuell ausführen. Vorhandenen Tag eingeben und die bewusste Bestätigung `CAD UNTESTED SOURCE PREVIEW` exakt schreiben.
-4. Der Prüfschritt akzeptiert nur das Preview-Tagmuster und einen existierenden Tag auf genau dem ausgewählten `main`-Commit. Python-Tests, staged-Quellaudit und der Windows-Kerntest müssen erneut bestehen. Erst der folgende Publisher-Job erhält `contents: write`; alle anderen Jobs nur `contents: read`. Actions sind auf volle offizielle Commit-SHAs gepinnt, Checkout speichert keine Zugangsdaten.
-5. Ergebnis ist immer ein **Prerelease** mit `Source Preview - CAD UNTESTED` im Titel und dem unverifizierten CAD-Status in den Notizen. Bestehende Releases werden nicht überschrieben. Danach die beiden Assets herunterladen und Hash/Manifest sowie Status prüfen.
+1. Review the changes on `main` and check that CI passes there. Workflow triggers avoid `pull_request_target` and `workflow_run`. Pull request code runs with read-only repository contents access.
+2. Create and push a new tag such as `v0.1.0-source-preview.1` on the verified `main` commit. The workflow expects the tag to exist at that commit.
+3. In Actions, manually run `Source preview release (CAD untested)` **on main**. Enter the existing tag and type `CAD UNTESTED SOURCE PREVIEW` exactly.
+4. The verification job checks the tag pattern and target, regenerates nothing, checks the staged source and generated entries, and runs Python, Windows Script Host, and Windows dialog tests. Only the publishing job gets `contents: write`. The remaining jobs have `contents: read`. The workflow pins actions to full official commit SHAs and disables persisted checkout credentials.
+5. Download the two assets from the resulting **prerelease** and verify the hash, manifest, and status. The title includes `Source Preview - CAD UNTESTED`, and the notes state the CAD test status. The workflow creates a new release through the tag.
 
-Die manuelle Bestätigung ist ein Workflow-Eingabegatter, **keine konfigurierte GitHub-Environment-Genehmigung**. Es wurden keine Branch-/Tag-Regeln oder Required Reviewers im Konto eingerichtet oder behauptet. Für spätere Teamverteilung zusätzlich geschütztes `main`, unveränderliche Release-Tags per Tagregeln, Reviewpflichten für `.github/` und Positivliste, sowie soweit im Kontoplan verfügbar ein Release-Environment mit erforderlichen Reviewern konfigurieren. [GitHubs Sicherheitsreferenz](https://docs.github.com/en/actions/reference/security/secure-use) erläutert minimale Rechte und SHA-Pinning. Das ersetzt nicht die Arbeitsplatzprüfung.
+The acknowledgement is a workflow input. The repository setup described here includes no configured GitHub environment approval, required reviewers, or branch or tag rules. GitHub documents the available protections and explains least-privilege permissions and SHA pinning. [GitHub's secure-use reference](https://docs.github.com/en/actions/reference/security/secure-use)
 
-GitHub erzeugt zu Releases zusätzlich Quellarchive aus dem Tag. Daher muss die **gesamte getaggte Quellversion** sauber sein, nicht nur das angehängte ZIP. Die Workbook-Regel gilt auch für lokale Git-Historie: nie eine Originaldatei committen, selbst wenn sie danach wieder gelöscht würde.
+GitHub also creates source archives from the release tag. The entire tagged source tree must therefore be suitable for publication. Keep the original workbook out of local Git history as well, including files that would be deleted in a later commit.
 
-Die erneute Tagprüfung reduziert eine Zuordnungsrace, kann jedoch keine atomare Tag-Unveränderlichkeit erzwingen. Für verbindliche Releases sind unveränderliche Release-Tags serverseitig erforderlich; hierfür wurde keine Konfiguration im Konto geändert.
+The final tag check reduces the time during which a changed tag can invalidate verification. Atomic tag immutability requires server-side tag protection, which the workflow does not configure.

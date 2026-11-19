@@ -104,3 +104,13 @@ Standard change using GPT-6.2-sol. Primary implementation with independent geome
 ## Review
 
 23 local Python tests passed, including a failing-then-passing regression test for the embedded HTML. Headless Chrome rendered the 40/30, flat 30/30, and 60/30 cases with matching result rows. Reference screenshot inspected for dimensions and legibility. The VBA workflow tests are prepared for the next Windows CI run. CATIA V5 R32 execution and Windows browser launch have not been tested for this revision. The primary agent handled the implementation, documentation and local Git work. Numerical annotations reviewed independently by `/root/numerical_review`.
+
+# Shared English CAD results
+
+Standard change using GPT-6.2-sol. Preserve both tested solver cores and package protections. Give the two direct launchers the same offline illustrated report, and translate all current UI and repository guides to English. Documentation translations delegated independently to `english_guides` and `english_reference`.
+
+- [x] Test standalone NX report output using the existing reference and flat cases.
+- [x] Share the report template, implement NX browser launch and translate both UI paths.
+- [x] Verify the delivered files, browser rendering and English documentation.
+
+Review: the new standalone NX report test failed before implementation. All 24 local tests now pass. Both shipped files embed the same template. Chrome rendered the English reference and flat reports and the reference image was inspected. The Python and VBA calculation cores have no diff. Both source entry points and the optional CAD interfaces are in English. Documentation translation and verification were handled by `/root/english_guides` and `/root/english_reference`. Windows CI will exercise the actual NX dialog with a captured report and the CATScript runner. CAD host launch is a workstation check.

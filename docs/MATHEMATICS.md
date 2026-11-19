@@ -1,67 +1,69 @@
-# Rechenvertrag
+# Calculation contract
 
-Alle Längen in mm, Winkel intern im Bogenmaß, Ausgabe in Grad. Eine symmetrische Periode hat die projizierte Breite `l2`, die gewünschte Kosinus-Polygonlänge ist `l1`.
+All lengths are in millimeters. The solvers use radians internally and report angles in degrees. One symmetric period has projected width `l2` and target cosine polyline length `l1`.
 
-## 1. Kosinus: Excel-Semantik
+## 1. Excel-compatible cosine reference
 
-`y(x)=A*(1-cos(2*pi*x/l2))`. Für `x_i=i*l2/1000`, `i=0..1000`, wird die Summe der 1000 Sehnenlängen durch Bisektion von `A >= 0` auf `l1` eingestellt. 64 Bisektionsschritte, dimensionslose Rechnung mit `a=A/l2`; keine Solver-Laufzeitabhängigkeit. Der obere Bisektionswert `a=(l1/l2)/4` begrenzt die Lösung, da die gesamte vertikale Variation `4*a` beträgt.
+The reference profile is `y(x)=A*(1-cos(2*pi*x/l2))`. The solver finds `A >= 0` by 64 bisection steps so the sum of the 1000 chord lengths between points `x_i=i*l2/1000`, for `i=0..1000`, equals `l1`. The calculation uses the dimensionless amplitude `a=A/l2` and requires no external solver. The upper bisection bound is `a=(l1/l2)/4`, since the total vertical variation is `4*a`.
 
-Die analytische Kosinuslänge wird **nicht** zur Lösung benutzt. Beim Standardfall ist die Kosinus-Polygonlänge 40 mm, die durch unabhängige Simpson-Integration ermittelte kontinuierliche Kosinuslänge 40,000027699761 mm.
+The target applies to the sampled polyline. In the reference case, that length is 40 mm, while independent Simpson integration gives a continuous cosine length of 40.000027699761 mm.
 
-## 2. Drei gleiche Radien und zwei Tangenten
+## 2. Three equal radii and two tangents
 
-Die drei Bögen haben Winkel `phi, 2*phi, phi`; beide Geraden haben Länge
+The three arcs have angles `phi, 2*phi, phi`. Each straight segment has length
 
 `s=(l2/2-2*R*sin(phi))/cos(phi)`.
 
-`h=(l2/2-2*R*sin(phi))*tan(phi)+2*R*(1-cos(phi))`.
+The profile height is `h=(l2/2-2*R*sin(phi))*tan(phi)+2*R*(1-cos(phi))`.
 
-Die analytische Länge ist `4*R*phi+2*s`. Das Profil ist an den vier Übergängen tangential; seine Krümmung springt an den Geradenübergängen.
+The analytical length is `4*R*phi+2*s`. The profile is tangent at all four joins. Curvature changes discontinuously where each straight segment meets an arc.
 
-Für die robuste Berechnung: `u=min(x,l2-x)/l2`, `rho=R/l2`, `q=4*rho*sin(phi)`, `u1=q/4`, `u2=1/2-q/4`, `H=h/l2`:
+For a numerically stable evaluation, define `u=min(x,l2-x)/l2`, `rho=R/l2`, `q=4*rho*sin(phi)`, `u1=q/4`, `u2=1/2-q/4`, and `H=h/l2`. The normalized ordinate `Y` is defined piecewise.
 
-- `u < u1`: `Y=u²/(rho+sqrt(rho²-u²))`.
-- `u1 <= u <= u2`: `Y=2*rho*sin(phi/2)²+(u-u1)*tan(phi)`.
-- `u > u2`: `Y=H-(1/2-u)²/(rho+sqrt(rho²-(1/2-u)²))`.
+- For `u < u1`, use `Y=u²/(rho+sqrt(rho²-u²))`.
+- For `u1 <= u <= u2`, use `Y=2*rho*sin(phi/2)²+(u-u1)*tan(phi)`.
+- For `u > u2`, use `Y=H-(1/2-u)²/(rho+sqrt(rho²-(1/2-u)²))`.
 
-`H=(1-q)*tan(phi)/2+q*tan(phi/2)/2`, `y=l2*Y`. Rationalisierte Kreisformeln vermeiden Auslöschung nahe der flachen Lösung.
+Here `H=(1-q)*tan(phi)/2+q*tan(phi/2)/2` and `y=l2*Y`. The rationalized circle formulas avoid cancellation near the flat solution.
 
-## 3. Formfit ohne Längenbedingung
+## 3. Shape fit without a length constraint
 
-Minimiert wird `sum((y_fit(x_i)-y_cos(x_i))²)` an denselben 1001 x-Stützstellen. Symmetrie erlaubt 501 Auswertungen: doppelte Gewichte außer am Scheitel. Keine Normalabstände, kein CAD-Spline, keine Längenoptimierung. Definitionsbereich: positive Radien und Geraden, `0<q<1`, `0<phi<pi/2`. Zwei deterministische Nelder-Mead-Läufe starten mit `q=0.3,0.7`, `z=1`, wobei `phi=z*atan(2*pi*a)`; initiale Simplexschritte 0,05 und 0,1. Abbruch bei Simplex-Ausdehnung <1e-9, maximal 400 Iterationen je Start. Nichtkonvergenz oder degenerierte Grenzen führen zu einem Fehler. Dies ist kein allgemeiner Beweis eines globalen Minimums. Eine unabhängige verschachtelte Golden-Section-Suche bestätigt den Referenzfall.
+The objective is `sum((y_fit(x_i)-y_cos(x_i))²)` at the same 1001 x positions. Symmetry reduces this to 501 evaluations, with weights of two except at the peak. The fit uses vertical residuals and solves for positive radii and straight segments over `0<q<1` and `0<phi<pi/2`.
 
-Die Formfit-Polygonlänge verwendet wieder exakt 1000 x-Abschnitte. Der analytische Längenwert wird getrennt ausgewiesen. Beide werden gegen `l1` verglichen; positiver Fehler bedeutet zu lang. Das Höhenmaximum und die vertikalen Residuen stammen aus dem Fit. RMS = `sqrt(SSE/1001)`; Maximum nur auf den Stützstellen, kein Beweis eines kontinuierlichen Maximums.
+Two deterministic Nelder-Mead runs start at `q=0.3,0.7` and `z=1`, with `phi=z*atan(2*pi*a)`. Their initial simplex steps are 0.05 and 0.1. Each run terminates when the simplex span is less than `1e-9`, with a limit of 400 iterations per start. Failure to converge or a degenerate boundary solution raises an error. An independent nested golden-section search confirms the reference case. Global optimality across the whole input range remains unproven.
 
-## 4. Flacher Grenzfall und Bereich
+The fitted polyline length uses exactly 1000 x intervals. The analytical length is reported separately. Both lengths are compared with `l1`, and a positive error means the fitted profile is longer than the target. Peak height and vertical residuals describe the fitted profile. RMS is `sqrt(SSE/1001)`. The reported maximum is the greatest absolute vertical residual at the sample positions.
 
-Bei genau `l1=l2`: `A=h=phi=0`, beide Geraden je `l2/2`, Fitlänge `l2`, Fehler null. Kreis-/Kosinusradien sind undefiniert (Python `None`, VBA `Empty`), keine künstliche Nullradius-Dehnung. Falls eine Dicke angegeben ist, ist die vereinfachte Dehnungsabschätzung null; sonst fehlt sie.
+## 4. Flat limit and supported range
 
-Validiert: `0.001 <= l1,l2 <= 1e6`, `l2 <= l1 <= 2*l2`, optionale Dicke `0..1e6`. Boolesche Werte, nicht numerische Typen, NaN und Unendlich sind unzulässig. Die Python-Diagnoseoption `segments` erlaubt gerade ganze Zahlen 100..20000; **Standard und CAD-UIs bleiben 1000**. Höhere Segmentzahlen verändern die Excel-Semantik und dienen nur der Konvergenzdiagnose. VBA hat absichtlich keine veränderbare Segmentoption.
+For exactly `l1=l2`, `A=h=phi=0`, both straight segments have length `l2/2`, the fitted length is `l2`, and the error is zero. Arc and cosine radii are undefined (Python `None`, VBA `Empty`). The simplified strain estimate is zero when thickness is supplied and omitted when thickness is absent.
 
-## 5. Radius und sehr vereinfachte Dehnung
+The validated range is `0.001 <= l1,l2 <= 1e6`, `l2 <= l1 <= 2*l2`, and optional thickness from 0 to `1e6`. Boolean values, nonnumeric types, NaN, and infinity are invalid. The Python diagnostic `segments` option accepts even integers from 100 through 20000. **The default and both CAD interfaces use 1000 segments.** Higher counts change the Excel sampling convention and are provided to study convergence. The VBA entry uses a fixed segment count.
 
-Excel-Blatt `check cracks`: `r_excel=l2²/(2*pi²*A)`; unverändert als **Excel-Abschätzung** ausgegeben. Aus `y''(0)=4*pi²*A/l2²` folgt `r_correct=l2²/(4*pi²*A)`, separat als **korrigierter Kosinusradius**. Das Radiusverhältnis ist exakt zwei.
+## 5. Radius and simplified strain
 
-Optionale Dehnung in Prozent = `100*t/(2*r)`. Keine Fließkurve, neutrale Faser, Werkzeugreibung, Dickenänderung, plastische Vorgeschichte oder mehrachsige Spannungen. Daraus folgt keine Aussage über Risse, Herstellbarkeit oder Freigabe.
+The `check cracks` worksheet reports `r_excel=l2²/(2*pi²*A)`. The report preserves this value as the **Excel estimate**. The derivative `y''(0)=4*pi²*A/l2²` gives `r_correct=l2²/(4*pi²*A)`, reported separately as the **corrected cosine radius**. The Excel radius is exactly twice the corrected radius.
 
-## 6. Felder und gemeinsame Referenzen
+Optional strain in percent is `100*t/(2*r)`. This simplified estimate omits flow curves, neutral-axis shifts, tool friction, thickness changes, prior plastic deformation, and multiaxial stresses. Crack risk, manufacturability, and approval require separate assessment.
 
-`reference/cases.csv`: original vorgegebener Zahlenfall 40/30/2, flach 30/30/2, homogene Skalierung 80/60/4. Keine Extraktion einer Arbeitsmappe. Toleranzen: dimensionale Fitwerte 1e-6 mm * (l2/30), Winkel 1e-5 Grad. Solverhistorie und gerundete Referenzwerte erlauben keine Bitgleichheit. Der beobachtete Unterschied im Referenzfall ist deutlich kleiner.
+## 6. Result fields and common references
 
-VBA-Rückgabe von `WrinkleCalculate(l1,l2,thickness)` ist ein nullbasiertes Variant-Array:
+`reference/cases.csv` contains the supplied 40/30/2 case, the flat 30/30/2 case, and homogeneous scaling to 80/60/4. The reference numbers came from the supplied case description. Dimensional fit tolerance is `1e-6 mm * (l2/30)` and angle tolerance is `1e-5` degrees. Solver history and rounded reference values limit the comparison to numerical tolerances. Observed differences for the reference case are considerably smaller.
 
-| Index | Python-Feld | Einheit |
+The VBA function `WrinkleCalculate(l1,l2,thickness)` returns a zero-based Variant array.
+
+| Index | Python field | Unit |
 |---:|---|---|
 | 0 | amplitude_mm | mm |
 | 1 | radius_mm | mm / Empty |
 | 2 | height_mm | mm |
-| 3 | phi_deg | Grad |
-| 4 | straight_mm | mm je Seite |
+| 3 | phi_deg | degrees |
+| 4 | straight_mm | mm per side |
 | 5 | fit_polygon_mm | mm |
 | 6 | fit_analytic_mm | mm |
-| 7 | length_error_pct | % gegen l1 |
+| 7 | length_error_pct | % relative to l1 |
 | 8 | rms_form_error_mm | mm |
-| 9 | max_form_error_mm | mm, nur Stützstellen |
+| 9 | max_form_error_mm | mm at sample positions |
 | 10 | cosine_radius_excel_mm | mm / Empty |
 | 11 | cosine_radius_corrected_mm | mm / Empty |
 | 12 | arc_strain_pct | % / Empty |
@@ -70,4 +72,4 @@ VBA-Rückgabe von `WrinkleCalculate(l1,l2,thickness)` ist ein nullbasiertes Vari
 | 15 | vertical_sse_mm2 | mm² |
 | 16 | segments | 1000 |
 
-Python liefert zusätzlich `analytic_length_error_pct`, Eingabelängen und Iterationszahl des ausgewählten Laufs. `thickness=None`/VBA `Empty` bedeutet keine Dickenabschätzung; Dicke null bedeutet explizit null.
+Python additionally returns `analytic_length_error_pct`, the input lengths, and the iteration count for the selected run. `thickness=None` or VBA `Empty` omits strain estimates. A thickness of zero explicitly requests an estimate at zero thickness.

@@ -28,7 +28,7 @@ class EntryTests(unittest.TestCase):
         import struct
         self.assertGreater(len(data),300)
         self.assertEqual(struct.unpack_from('<H',data,8)[0],11)
-        for label in ['Abgewickelte Laenge l1 [mm]','Berechnen','Schliessen']:
+        for label in ['Developed target length l1 [mm]','Calculate','Close']:
             self.assertIn(label.encode('utf-16-le'),data)
 
     def test_generated_nx_journal_is_standalone_and_matches_reference(self):
@@ -57,7 +57,7 @@ class EntryTests(unittest.TestCase):
 
         path = 'ready-to-run/CATIA_WrinkleCalculator.CATScript'
         script = generated_sources(ROOT)[path].decode('ascii')
-        template = (ROOT / 'cad/catia/result.html').read_text(encoding='ascii')
+        template = (ROOT / 'cad/result.html').read_text(encoding='ascii')
         _, found, body = script.partition('Function WResultTemplate()\n')
         self.assertTrue(found, 'standalone macro is missing its report template')
         statements = body.partition('End Function')[0].splitlines()
@@ -67,6 +67,31 @@ class EntryTests(unittest.TestCase):
                     for line in statements if line.startswith(prefix) and line.endswith(suffix)]
         self.assertEqual('\n'.join(embedded) + '\n', template)
         self.assertEqual((ROOT / path).read_bytes(), script.encode('ascii'))
+
+    def test_standalone_nx_uses_the_same_english_report_and_real_profile(self):
+        import json
+        import re
+
+        path = ROOT / 'ready-to-run/NX_WrinkleCalculator.py'
+        with tempfile.TemporaryDirectory() as tmp:
+            journal = Path(tmp) / path.name
+            journal.write_bytes(path.read_bytes())
+            source = runpy.run_path(str(journal))
+            self.assertEqual(source['REPORT_TEMPLATE'],
+                             (ROOT / 'cad/result.html').read_text(encoding='ascii'))
+            for l1, thickness in [(40, 2), (30, None)]:
+                with self.subTest(l1=l1):
+                    result = source['calculate'](l1, 30, thickness)
+                    html = source['render_illustrated_report'](result, thickness)
+                    self.assertIn('<html lang="en">', html)
+                    payload = re.search(r'id="result-data" type="application/json">([^<]+)', html)
+                    data = json.loads(payload.group(1))
+                    self.assertEqual((data['l1'], data['l2'], data['thickness']), (l1, 30, thickness))
+                    self.assertEqual(len(data['fit']), 201)
+                    self.assertEqual(data['fit'][0], 0)
+                    self.assertEqual(data['fit'][-1], 0)
+                    self.assertAlmostEqual(data['fit'][100], result['height_mm'], places=10)
+                    self.assertEqual(data['values'][1], result['radius_mm'])
 
     def test_generation_check_rejects_stale_delivery(self):
         from tools.build_entries import generated_sources,check_generated
