@@ -11,3 +11,5 @@
 - **Changing repository visibility -> inspect historical author/committer metadata and all Actions logs as well as source files -> keep visibility private until any personal-data disclosure decision is explicit; a force-push alone does not prove cached GitHub objects were purged.**
 
 - **Test startup directives on the delivered script.** Compile the exact `.CATScript` before the test harness appends code, so it cannot hide a malformed preamble.
+
+- **For dimensioned profiles, plot both axes at the same scale and verify which curve owns each measure.** Plot representative and flat cases, and keep display sampling separate from the solver's length calculation.

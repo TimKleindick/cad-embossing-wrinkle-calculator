@@ -17,7 +17,7 @@ PACKAGE_FILES = (
     'cad/catia/UserForm-code.txt','cad/catia/test_core.vbs',
     'tools/__init__.py','tools/run_vbscript_tests.py','tools/package_preview.py','tools/independent_check.py',
     'tests/test_core.py','tests/test_packaging.py','tests/test_cli.py','tests/test_entries.py',
-    'cad/nx/win32_dialog.py','cad/catia/entry.vbs','cad/catia/test_entry.vbs',
+    'cad/nx/win32_dialog.py','cad/catia/entry.vbs','cad/catia/test_entry.vbs','cad/catia/result.html',
     'tools/build_entries.py','tools/test_windows_dialog.py',
     'ready-to-run/NX_WrinkleCalculator.py','ready-to-run/CATIA_WrinkleCalculator.CATScript',
 )

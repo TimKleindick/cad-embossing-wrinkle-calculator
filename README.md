@@ -2,7 +2,7 @@
 
 Erste Rechenprototypen für **NX 2412** und **CATIA V5 R32**. Keine Geometrieerzeugung. **CAD-Laufzeit, VBA-Kompilierung, native UI-Importe, Lizenzen und reale Installation sind ungetestet.** Die Quellen ersetzen keine erprobten CAD-Installationspakete.
 
-**Vorbereiteter Direktstart:** [`ready-to-run/NX_WrinkleCalculator.py`](ready-to-run/NX_WrinkleCalculator.py) in NX über **Journal > Play** öffnen; erzeugt seinen Windows-Dialog selbst. [`ready-to-run/CATIA_WrinkleCalculator.CATScript`](ready-to-run/CATIA_WrinkleCalculator.CATScript) in CATIA über eine **Directories-Makrobibliothek** starten; fragt Werte in nativen Eingabeboxen ab. Jede Datei enthält ihren vollständigen unveränderten Kern. Tim muss keine DLX, UserForm oder CATVBA erstellen.
+**Vorbereiteter Direktstart:** [`ready-to-run/NX_WrinkleCalculator.py`](ready-to-run/NX_WrinkleCalculator.py) in NX über **Journal > Play** öffnen; erzeugt seinen Windows-Dialog selbst. [`ready-to-run/CATIA_WrinkleCalculator.CATScript`](ready-to-run/CATIA_WrinkleCalculator.CATScript) in CATIA über eine **Directories-Makrobibliothek** starten; fragt Werte in nativen Eingabeboxen ab und öffnet einen lokalen Browserbericht mit beschrifteter Profilskizze. Jede Datei enthält ihren vollständigen unveränderten Kern. Tim muss keine DLX, UserForm oder CATVBA erstellen.
 
 Die Dateien vollständig herunterladen/entpacken und im jeweiligen CAD starten. Genaue Menüschritte, Einstellungen, Voraussetzungen, Sollwerte, Abbruch und Fehlerdiagnose stehen in den beiden Anleitungen unten. Der NX-Einstieg setzt Windows und `ctypes` im NX-Python voraus; der CATIA-Einstieg eine verfügbare VBScript-Engine und Makrofreigabe. Diese Hostvoraussetzungen sind ungetestet.
 

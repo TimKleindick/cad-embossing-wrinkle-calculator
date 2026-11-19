@@ -91,3 +91,16 @@ Scope: targeted CATIA startup bug fix. GPT-6.2-sol, direct execution for a small
 - [x] Observe the regression test failure, fix and regenerate the entry, and run local verification.
 
 Review: the regression failed on the old first line and all 22 tests passed after regeneration. The Windows runner now compiles the original delivered file before the behavior tests. A rerun inside CATIA V5 R32 is the remaining host check. The primary agent handled the targeted fix, documentation and Git work.
+
+# CATIA illustrated results
+
+Standard change using GPT-6.2-sol. Primary implementation with independent geometry review. Reuse the existing CATScript solver and publish a self-contained entry locally. CATScript MsgBox supports plain text and fixed icons, so open a local offline browser result after a successful calculation and retain the text pages on launch failure.
+
+- [x] Verify that the generated file embeds the complete template. Add Windows workflow cases for illustrated output, fallback, decimal handling and flat results.
+- [x] Add the dimensioned profile, definitions and existing results to a single page.
+- [x] Regenerate the standalone macro and check reference and flat-case results.
+- [x] Verify browser rendering, package contents and documentation. Record CATIA host limits.
+
+## Review
+
+23 local Python tests passed, including a failing-then-passing regression test for the embedded HTML. Headless Chrome rendered the 40/30, flat 30/30, and 60/30 cases with matching result rows. Reference screenshot inspected for dimensions and legibility. The VBA workflow tests are prepared for the next Windows CI run. CATIA V5 R32 execution and Windows browser launch have not been tested for this revision. The primary agent handled the implementation, documentation and local Git work. Numerical annotations reviewed independently by `/root/numerical_review`.

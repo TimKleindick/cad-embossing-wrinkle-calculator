@@ -2,7 +2,7 @@
 
 ## Lieferumfang und Status
 
-Startdatei: **`ready-to-run/CATIA_WrinkleCalculator.CATScript`**. Sie enthält den unveränderten VBA/VBScript-kompatiblen Kern und den vollständigen Makroeinstieg. Native **InputBox-/MsgBox-Dialoge** fragen die Werte ab und zeigen drei Ergebnis-Seiten. Kein CATVBA-Projekt, keine UserForm-Erstellung, kein Import von BAS-/FRM-Dateien, keine Excel-Installation und kein externer Python-Aufruf erforderlich.
+Startdatei: **`ready-to-run/CATIA_WrinkleCalculator.CATScript`**. Sie enthält den unveränderten VBA/VBScript-kompatiblen Kern und den vollständigen Makroeinstieg. CATIA fragt die Eingaben in Dialogen ab. Danach öffnet das Makro einen lokalen Ergebnisbericht mit beschrifteter Profilskizze im Windows-Standardbrowser. Kein CATVBA-Projekt, keine UserForm-Erstellung, kein Import von BAS-/FRM-Dateien, keine Excel-Installation und kein externer Python-Aufruf erforderlich.
 
 Die bequemere zusammenhängende UserForm bleibt als [optionale Ausbauanleitung](CATIA-V5-R32-UserForm-optional.md). Für dynamische CATVBA-UserForms aus einem reinen Skript ohne Formular-/Projektabhängigkeit wurde kein belastbar dokumentierter CATIA-Weg gefunden. Daher ist die vorbereitete Folge nativer Dialoge die konkrete Standardalternative. Es wird keine allgemeine technische Unmöglichkeit behauptet.
 
@@ -16,12 +16,13 @@ Die bequemere zusammenhängende UserForm bleibt als [optionale Ausbauanleitung](
 4. Die Datei muss exakt **`CATIA_WrinkleCalculator.CATScript`** heißen. Dateiendungen einblenden; `.CATScript.txt` ist falsch. Die aktuelle Datei beginnt mit `Option Explicit`. Alternativ nur diese eine Datei über GitHubs **Download raw file** beziehen; sie benötigt keine Begleitdateien.
 5. Den Quell-Commit aus der GitHub-Dateiansicht für das spätere Protokoll notieren. Ein gebautes Source-Preview-ZIP darf ebenfalls vollständig entpackt werden; der gleiche Unterordner enthält die Startdatei. Für diesen Auftrag wurde kein Release veröffentlicht.
 
-Keine Original-Excel in das Repository oder Testprotokoll kopieren. Die Makrodatei lädt keine Arbeitsmappe und schreibt keine Ergebnisdatei.
+Keine Original-Excel in das Repository oder Testprotokoll kopieren. Der Ergebnisbericht besteht aus einer HTML-Datei im Windows-Temp-Ordner. Sie enthält die eingegebenen und berechneten Werte sowie die Skizze. Der Bericht funktioniert offline und verwendet keine externen Bilder oder Skripte.
 
 ## 2. Voraussetzungen und Einstellungen
 
 - Windows-Arbeitsplatz mit **CATIA V5 R32** und erlaubter Skript-Makroausführung. Eine konkrete zusätzliche Lizenz-SKU ist anhand der verfügbaren Quellen nicht bestätigt; Lizenz-/Makrofreigaben vor Ort mit IT prüfen.
 - Funktionierende **VBScript-Skript-Engine** in der unterstützten CATIA-/Windows-Konfiguration. Das Makro ruft weder `wscript.exe` noch `cscript.exe` auf; diese werden nur für externe CI-Tests benutzt.
+- Die grafische Ausgabe verwendet den Windows-Standardbrowser und die Windows-Komponenten `Scripting.FileSystemObject` und `Shell.Application`. Bei einem Fehler beim Erstellen oder Öffnen des Berichts zeigt das Makro die drei Textdialoge.
 - Kein VBA-Editor und keine Microsoft-Forms-Installation für diesen Startweg vorgesehen. Keine Makro-Sicherheitsrichtlinie global abschalten und keine externen COM-Form-Klassen registrieren.
 - Microsoft kündigt VBScript ab und führt es als Windows Feature on Demand. Fehlt die Engine, ist dies eine zu klärende Installations-/IT-Frage, kein Anlass, Unternehmensrichtlinien zu umgehen. Die konkrete R32-/Windows-Kombination wurde hier nicht getestet.
 
@@ -44,24 +45,24 @@ Die Bibliotheksregistrierung ist normalerweise der einmalige Vorbereitungsschrit
 2. **Projizierte Breite l2**: `30`, mit OK bestätigen.
 3. **Optionale Dickenabschaetzung berechnen?**: **Ja** wählen.
 4. **Optionale Wanddicke**: `2`, mit OK bestätigen.
-5. Es folgen drei mit **1/3, 2/3, 3/3** betitelte Ergebnisdialoge. Werte ablesen und jeweils mit OK weitergehen. **Strg+C** kopiert bei einer normalen Windows-Meldungsbox üblicherweise deren Text; dies am Arbeitsplatz prüfen oder Werte ins Testprotokoll übertragen.
+5. Im Standardbrowser erscheint **Faltengeometrie** mit den beiden Profilen, Maßpfeilen und allen Ergebniswerten. `A` reicht von der Mittellinie zum Kosinus-Scheitel. `l1` bezeichnet die Soll-Länge entlang der Kosinus-Referenz und `l2` die Breite zwischen den Endpunkten. Bei einem Fehler beim Browserstart folgen die drei Textdialoge.
 
-Alle Eingaben sind mm. Ein Punkt oder ein Komma wird eindeutig als **Dezimalzeichen** interpretiert, z.B. `40,0` und `40.0` sind gleich. Keine Tausendertrennzeichen, Einheiten oder Exponenten verwenden; mehrdeutige gemischte Schreibweisen werden abgelehnt. Die Ausgabe folgt der Windows-Regionseinstellung.
+Alle Eingaben sind mm. Ein Punkt oder ein Komma wird eindeutig als **Dezimalzeichen** interpretiert, z.B. `40,0` und `40.0` sind gleich. Keine Tausendertrennzeichen, Einheiten oder Exponenten verwenden; mehrdeutige gemischte Schreibweisen werden abgelehnt. Der Browserbericht formatiert Zahlen auf Deutsch. Die Textdialoge richten sich nach der Windows-Regionseinstellung.
 
-| Seite | Größe | Soll, ungefähr |
+| Abschnitt | Größe | Soll, ungefähr |
 |---|---|---:|
-| 1 | A | 6,139413268 mm |
-| 1 | R | 5,0322554 mm |
-| 1 | Höhe | 12,2342750 mm |
-| 1 | Winkel | 49,8407463° |
-| 1 | Gerade je Seite | 11,3319680 mm |
-| 2 | Excel-Polygonlänge | 40,1738373 mm |
-| 2 | Analytische Fitlänge | 40,1738725 mm |
-| 2 | Polygon-Längenabweichung | **+0,434593 %** |
-| 2 | Vertikale Formabweichung RMS / maximal | 0,096220 / 0,181006 mm |
-| 3 | Excel-/korrigierter Kosinusradius | 7,426529319 / 3,713264660 mm |
-| 3 | Excel-/korrigierte Kosinus-Dehnung | 13,465240 / 26,930480 % |
-| 3 | Kreisbogen-Dehnung | 19,871805 % |
+| Profilmaße | A | 6,139413268 mm |
+| Profilmaße | R | 5,0322554 mm |
+| Profilmaße | Höhe | 12,2342750 mm |
+| Profilmaße | Winkel | 49,8407463° |
+| Profilmaße | Gerade je Seite | 11,3319680 mm |
+| Längen- und Formvergleich | Excel-Polygonlänge | 40,1738373 mm |
+| Längen- und Formvergleich | Analytische Fitlänge | 40,1738725 mm |
+| Längen- und Formvergleich | Polygon-Längenabweichung | **+0,434593 %** |
+| Längen- und Formvergleich | Vertikale Formabweichung RMS / maximal | 0,096220 / 0,181006 mm |
+| Radien und Dehnungsabschätzung | Excel-/korrigierter Kosinusradius | 7,426529319 / 3,713264660 mm |
+| Radien und Dehnungsabschätzung | Excel-/korrigierte Kosinus-Dehnung | 13,465240 / 26,930480 % |
+| Radien und Dehnungsabschätzung | Kreisbogen-Dehnung | 19,871805 % |
 
 Der Hinweis **`Laengenziel <0.1% NICHT erreicht`** gehört zum korrekten Excel-Standard. Es wird weiter mit 1000 Segmenten und Formfit ohne Längenbedingung gerechnet. Dehnung ist allein die stark vereinfachte `t/(2r)`-Abschätzung, keine Freigabe oder Risssicherheitsaussage.
 
@@ -72,7 +73,7 @@ Der Hinweis **`Laengenziel <0.1% NICHT erreicht`** gehört zum korrekten Excel-S
 - Ungültige Eingaben liefern eine Fehlermeldung ohne Erfolgsseiten. Danach Makro erneut starten. Beispiele: `29/30`, `text`, negative Dicke. Unterstützt sind positive Längen 0,001..1.000.000 mm, `l2<=l1<=2*l2` und optionale Dicke 0..1.000.000 mm.
 - `30/30`, Dickenfrage Nein: flach, A/Höhe/Winkel/Fehler null, Gerade je Seite 15, Fitlänge 30 mm, Radien undefiniert, Dehnungen nicht angegeben.
 - `80/60/4`: Längen doppelt, Winkel, relative Fehler und Dehnungsabschätzungen unverändert.
-- Nach allen drei Seiten muss CATIA normal bedienbar sein. Makro erneut starten und nach l1 abbrechen; danach einmal CATIA schließen/öffnen und die Registrierung erneut prüfen. Geometrieanzahl und Dokument-Änderungsstatus sollen unverändert bleiben.
+- Nach der Ergebnisausgabe muss CATIA normal bedienbar sein. Makro erneut starten und nach l1 abbrechen; danach einmal CATIA schließen/öffnen und die Registrierung erneut prüfen. Geometrieanzahl und Dokument-Änderungsstatus sollen unverändert bleiben.
 
 ## 6. Fehlerdiagnose und Protokoll
 
@@ -83,6 +84,7 @@ Der Hinweis **`Laengenziel <0.1% NICHT erreicht`** gehört zum korrekten Excel-S
 | `ScriptingERR_1002` bei `Option Explicit` in Zeile 2 | Aktuelle Raw-Datei herunterladen und die alte Kopie im registrierten Makroordner ersetzen. `Option Explicit` steht in der korrigierten Datei in Zeile 1. |
 | Skript-Engine nicht verfügbar / Makro durch Richtlinie blockiert | Vollständige Meldung sowie CATIA-Build/SP/HF und Windows-Version erfassen. Unterstützte Engine/IT-Freigabe prüfen lassen; keine Sicherheitseinstellungen global senken. |
 | Eingabebox verdeckt | Taskleiste/Alt+Tab und CATIA-Fokus prüfen. Frühe V5-Versionen hatten dokumentierte InputBox-Fokusprobleme; daraus wird kein Fehler in R32 abgeleitet. Modalität/Fokus sind Teil des offenen Tests. |
+| Textdialoge statt Profilskizze | Windows-Standardprogramm für HTML und Schreibzugriff auf den Temp-Ordner prüfen. Der Start des Browserberichts aus CATIA V5 R32 muss vor Ort bestätigt werden. |
 | Nach Abbrechen kein Ergebnis | Vorgesehen: abbrechen/leer beendet vollständig. Erneut Run wählen. |
 | Zahl wird zurückgewiesen | Genau ein Dezimalzeichen, keine Gruppen-/Einheiten-/Exponentschreibweise; Wertebereich und l1/l2-Verhältnis prüfen. |
 | Dehnungswerte fehlen | Dickenfrage bewusst Ja wählen und Dicke eingeben. Nein bedeutet keine Schätzung, nicht Dicke null. |

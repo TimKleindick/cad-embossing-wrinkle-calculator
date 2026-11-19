@@ -219,6 +219,14 @@ Class WrinkleDialogs
     Public Sub ShowResult(ByVal text,ByVal page)
         MsgBox text,vbOKOnly+vbInformation,"Faltenrechner - CAD ungetestet - " & page & "/3"
     End Sub
+    Public Function ShowIllustrated(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
+        Dim succeeded
+        On Error Resume Next
+        Err.Clear
+        succeeded = WOpenResult(values, l1, l2, thickness)
+        ShowIllustrated = (Err.Number = 0 And succeeded = True)
+        On Error GoTo 0
+    End Function
     Public Sub ShowError(ByVal text)
         MsgBox "Fehler: " & text & vbCrLf & "Kein Ergebnis freigegeben. Makro erneut starten.", _
             vbOKOnly+vbExclamation,"Faltenrechner - Eingabe pruefen"
@@ -262,12 +270,52 @@ Function WEntryNumber(ByVal value,ByVal unit)
     End If
 End Function
 
+Function WJsonNumber(ByVal value)
+    If IsEmpty(value) Then
+        WJsonNumber = "null"
+    Else
+        ' CStr does not group digits. Normalize the decimal mark for JSON.
+        WJsonNumber = Replace(CStr(value), Mid(CStr(0.5), 2, 1), ".")
+    End If
+End Function
+
+Function WResultData(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
+    Dim numbers(16), fit(200), i, phi, ordinate
+    For i = 0 To UBound(numbers)
+        numbers(i) = WJsonNumber(values(i))
+    Next
+    phi = values(3) * WPI / 180
+    For i = 0 To UBound(fit)
+        ordinate = 0
+        If Not IsEmpty(values(1)) Then ordinate = WrinkleY(l2 * (i / 200), l2, values(1), phi)
+        fit(i) = WJsonNumber(ordinate)
+    Next
+    WResultData = "{""l1"":" & WJsonNumber(l1) & ",""l2"":" & WJsonNumber(l2) & _
+        ",""thickness"":" & WJsonNumber(thickness) & ",""values"":[" & Join(numbers, ",") & _
+        "],""fit"":[" & Join(fit, ",") & "]}"
+End Function
+
+Function WOpenResult(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
+    Dim fs, shell, path, report, stream
+    report = Replace(WResultTemplate(), "{{DATA}}", WResultData(values, l1, l2, thickness))
+    Set fs = CreateObject("Scripting.FileSystemObject")
+    Set shell = CreateObject("Shell.Application")
+    path = fs.BuildPath(fs.GetSpecialFolder(2).Path, "Faltengeometrie-" & fs.GetTempName & ".html")
+    Set stream = fs.CreateTextFile(path, False, False)
+    stream.Write report
+    stream.Close
+    Call shell.ShellExecute(path, "", "", "open", 1)
+    WOpenResult = True
+End Function
+
 Function WrinklePages(ByRef v,ByVal l1,ByVal l2)
     Dim a,b,c
     a="SOURCE PREVIEW - CATIA-Laufzeit/Import ungetestet" & vbCrLf
     a=a & "Excel: 1000 Segmente, Formfit ohne Laengenbedingung." & vbCrLf
-    a=a & "l1 / l2: " & l1 & " / " & l2 & " mm" & vbCrLf
-    a=a & "A: " & WEntryNumber(v(0),"mm") & vbCrLf & "R: " & WEntryNumber(v(1),"mm") & vbCrLf
+    a=a & "l1 (Soll-Laenge entlang der Referenz): " & l1 & " mm" & vbCrLf
+    a=a & "l2 (Breite zwischen den Endpunkten): " & l2 & " mm" & vbCrLf
+    a=a & "A (Kosinus-Amplitude; Scheitel bei 2A): " & WEntryNumber(v(0),"mm") & vbCrLf
+    a=a & "R (Radius der drei Kreisboegen): " & WEntryNumber(v(1),"mm") & vbCrLf
     a=a & "Hoehe: " & WEntryNumber(v(2),"mm") & vbCrLf & "Winkel: " & WEntryNumber(v(3),"deg") & vbCrLf
     a=a & "Gerade je Seite: " & WEntryNumber(v(4),"mm")
     b="Excel-Polygonlaenge: " & WEntryNumber(v(5),"mm") & vbCrLf
@@ -308,10 +356,12 @@ Function WrinkleRunChecked(ByRef ui)
         Err.Raise 5,"WrinkleEntry","Unbekannte Dialogantwort"
     End If
     values=WrinkleCalculate(l1,l2,thickness)
-    pages=WrinklePages(values,l1,l2)
-    For i=0 To 2
-        ui.ShowResult pages(i),i+1
-    Next
+    If Not ui.ShowIllustrated(values, l1, l2, thickness) Then
+        pages=WrinklePages(values,l1,l2)
+        For i=0 To 2
+            ui.ShowResult pages(i),i+1
+        Next
+    End If
     WrinkleRunChecked=True
 End Function
 
@@ -335,3 +385,200 @@ Sub CATMain()
     Set ui=New WrinkleDialogs
     success=WrinkleRun(ui)
 End Sub
+
+Function WResultTemplate()
+    Dim html
+    html = ""
+    html = html & "<!doctype html>" & vbLf
+    html = html & "<html lang=""de"">" & vbLf
+    html = html & "<head>" & vbLf
+    html = html & "<meta charset=""utf-8"">" & vbLf
+    html = html & "<meta name=""viewport"" content=""width=device-width, initial-scale=1"">" & vbLf
+    html = html & "<meta http-equiv=""Content-Security-Policy"" content=""default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'"">" & vbLf
+    html = html & "<title>Faltengeometrie &middot; Ergebnis</title>" & vbLf
+    html = html & "<style>" & vbLf
+    html = html & ":root{color-scheme:light;font:16px/1.45 system-ui,sans-serif;color:#142732;background:#edf2f3}" & vbLf
+    html = html & "body{margin:0}main{max-width:1100px;margin:0 auto;padding:32px 20px 52px}" & vbLf
+    html = html & "h1{margin:0 0 6px;font-size:clamp(1.8rem,4vw,2.6rem);letter-spacing:-.035em}" & vbLf
+    html = html & "h2{margin:0 0 8px;font-size:1.16rem}p{margin:0;color:#465c66}" & vbLf
+    html = html & "figure,section{margin:20px 0 0;background:#fff;border:1px solid #d7e2e5;border-radius:12px;padding:18px}" & vbLf
+    html = html & ".plot{overflow-x:auto}canvas{width:100%;min-width:640px;height:auto;display:block}" & vbLf
+    html = html & "figcaption{display:flex;gap:12px 26px;flex-wrap:wrap;color:#364d59;font-size:.9rem}" & vbLf
+    html = html & ".key{display:inline-block;width:24px;margin-right:8px;border-top:3px solid #03796d;vertical-align:middle}" & vbLf
+    html = html & ".cosine{border-color:#4151aa;border-top-style:dashed}.tangent{border-color:#a45315}" & vbLf
+    html = html & ".sections{display:grid;grid-template-columns:1fr 1fr;gap:16px}.sections section{min-width:0}" & vbLf
+    html = html & "section.primary{grid-column:1/-1}" & vbLf
+    html = html & "table{width:100%;border-collapse:collapse;font-size:.94rem}" & vbLf
+    html = html & "th,td{padding:7px 0;border-bottom:1px solid #e7eef0;text-align:left;vertical-align:top}" & vbLf
+    html = html & "tr:last-child th,tr:last-child td{border-bottom:0}th{padding-right:12px;font-weight:600;width:30%}" & vbLf
+    html = html & "td.value{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right;font-weight:650}" & vbLf
+    html = html & ".note{margin-top:10px;font-size:.87rem}.warning{color:#8d3b12;font-weight:650}" & vbLf
+    html = html & "@media(max-width:720px){.sections{display:block}th,td{padding:6px 3px}}" & vbLf
+    html = html & "</style>" & vbLf
+    html = html & "</head>" & vbLf
+    html = html & "<body>" & vbLf
+    html = html & "<main>" & vbLf
+    html = html & "<header>" & vbLf
+    html = html & "<h1>Faltengeometrie</h1>" & vbLf
+    html = html & "<p>Eine Periode mit Kosinus-Referenz und Kreisbogenprofil</p>" & vbLf
+    html = html & "</header>" & vbLf
+    html = html & "<figure>" & vbLf
+    html = html & "<h2>Profil und Ma&szlig;e</h2>" & vbLf
+    html = html & "<div class=""plot"">" & vbLf
+    html = html & "<canvas id=""profile"" width=""900"" height=""350"" role=""img"" aria-label=""Skizze der Faltengeometrie mit den Ma&szlig;en A, l1, l2, h, R, &phi; und s"">" & vbLf
+    html = html & "Die Ma&szlig;e und ihre Definitionen stehen in der Tabelle." & vbLf
+    html = html & "</canvas>" & vbLf
+    html = html & "</div>" & vbLf
+    html = html & "<figcaption>" & vbLf
+    html = html & "<span><i class=""key cosine""></i>Kosinus-Referenz mit Soll-L&auml;nge l<sub>1</sub></span>" & vbLf
+    html = html & "<span><i class=""key""></i>Profil aus drei Kreisb&ouml;gen und zwei Geraden</span>" & vbLf
+    html = html & "<span><i class=""key tangent""></i>Gerade s auf jeder Seite</span>" & vbLf
+    html = html & "</figcaption>" & vbLf
+    html = html & "</figure>" & vbLf
+    html = html & "<div class=""sections"">" & vbLf
+    html = html & "<section class=""primary"" aria-labelledby=""geometry-title"">" & vbLf
+    html = html & "<h2 id=""geometry-title"">Was bedeuten die Ma&szlig;e?</h2>" & vbLf
+    html = html & "<table aria-labelledby=""geometry-title""><tbody id=""geometry""></tbody></table>" & vbLf
+    html = html & "</section>" & vbLf
+    html = html & "<section aria-labelledby=""deviation-title"">" & vbLf
+    html = html & "<h2 id=""deviation-title"">L&auml;ngen- und Formvergleich</h2>" & vbLf
+    html = html & "<table aria-labelledby=""deviation-title""><tbody id=""deviation""></tbody></table>" & vbLf
+    html = html & "<p class=""note"" id=""length-target""></p>" & vbLf
+    html = html & "</section>" & vbLf
+    html = html & "<section aria-labelledby=""strain-title"">" & vbLf
+    html = html & "<h2 id=""strain-title"">Radien und Dehnungsabsch&auml;tzung</h2>" & vbLf
+    html = html & "<table aria-labelledby=""strain-title""><tbody id=""strain""></tbody></table>" & vbLf
+    html = html & "<p class=""note"">Vereinfachte Absch&auml;tzung nach t/(2r). Daraus folgt keine Materialfreigabe oder Aussage zur Risssicherheit.</p>" & vbLf
+    html = html & "</section>" & vbLf
+    html = html & "</div>" & vbLf
+    html = html & "</main>" & vbLf
+    html = html & "<script id=""result-data"" type=""application/json"">{{DATA}}</script>" & vbLf
+    html = html & "<script>" & vbLf
+    html = html & "'use strict';" & vbLf
+    html = html & "const {l1, l2, thickness, values, fit} = JSON.parse(document.getElementById('result-data').textContent);" & vbLf
+    html = html & "const [amplitude, radius, height, angle, straight] = values;" & vbLf
+    html = html & "const format = new Intl.NumberFormat('de-DE', {maximumFractionDigits: 9, useGrouping: false});" & vbLf
+    html = html & "function table(id, rows) {" & vbLf
+    html = html & "  const body = document.getElementById(id);" & vbLf
+    html = html & "  for (const [label, definition, value, unit] of rows) {" & vbLf
+    html = html & "    const row = body.insertRow();" & vbLf
+    html = html & "    const header = document.createElement('th');" & vbLf
+    html = html & "    header.scope = 'row';" & vbLf
+    html = html & "    header.textContent = label;" & vbLf
+    html = html & "    row.append(header);" & vbLf
+    html = html & "    if (definition) row.insertCell().textContent = definition;" & vbLf
+    html = html & "    const cell = row.insertCell();" & vbLf
+    html = html & "    cell.className = 'value';" & vbLf
+    html = html & "    cell.textContent = value === null ? '\u2013' : `${format.format(value)} ${unit}`;" & vbLf
+    html = html & "  }" & vbLf
+    html = html & "}" & vbLf
+    html = html & "table('geometry', [" & vbLf
+    html = html & "  ['l\u2081 \u00b7 Abgewickelte Soll-L\u00e4nge', 'Weg entlang der Kosinus-Referenz zwischen den Endpunkten, als Polygon mit 1000 Segmenten gemessen.', l1, 'mm']," & vbLf
+    html = html & "  ['l\u2082 \u00b7 Projizierte Breite', 'Waagerechter Abstand zwischen den Endpunkten des Profils.', l2, 'mm']," & vbLf
+    html = html & "  ['A \u00b7 Kosinus-Amplitude', 'Abstand von der Kosinus-Mittellinie zum Scheitel. Von der Grundlinie zum Kosinus-Scheitel sind es 2A.', amplitude, 'mm']," & vbLf
+    html = html & "  ['h \u00b7 Profilh\u00f6he', 'Senkrechter Abstand von der Grundlinie zum Scheitel des angepassten Kreisprofils.', height, 'mm']," & vbLf
+    html = html & "  ['R \u00b7 Kreisbogenradius', 'Gemeinsamer Radius der drei B\u00f6gen des angepassten Profils.', radius, 'mm']," & vbLf
+    html = html & "  ['\u03c6 \u00b7 Neigungswinkel', 'Steigung der geraden Flanke als Winkel gegen die Waagerechte.', angle, '\u00b0']," & vbLf
+    html = html & "  ['s \u00b7 Gerade je Seite', 'L\u00e4nge des geraden Verbindungsst\u00fccks zwischen zwei Kreisb\u00f6gen.', straight, 'mm']" & vbLf
+    html = html & "]);" & vbLf
+    html = html & "table('deviation', [" & vbLf
+    html = html & "  ['L\u00e4nge des Fit-Polygons', '', values[5], 'mm']," & vbLf
+    html = html & "  ['Analytische Fit-L\u00e4nge', '', values[6], 'mm']," & vbLf
+    html = html & "  ['L\u00e4ngenabweichung gegen l\u2081', '', values[7], '%']," & vbLf
+    html = html & "  ['Vertikale Formabweichung RMS', '', values[8], 'mm']," & vbLf
+    html = html & "  ['Max. vertikale Formabweichung (St\u00fctzstellen)', '', values[9], 'mm']" & vbLf
+    html = html & "]);" & vbLf
+    html = html & "const target = document.getElementById('length-target');" & vbLf
+    html = html & "const meetsTarget = Math.abs(values[7]) < 0.1;" & vbLf
+    html = html & "target.textContent = meetsTarget ? 'L\u00e4ngenziel < 0,1 % erreicht.' : 'L\u00e4ngenziel < 0,1 % nicht erreicht.';" & vbLf
+    html = html & "if (!meetsTarget) target.classList.add('warning');" & vbLf
+    html = html & "table('strain', [" & vbLf
+    html = html & "  ['Optionale Wanddicke t', '', thickness, 'mm']," & vbLf
+    html = html & "  ['Kosinus-Radius nach Excel', '', values[10], 'mm']," & vbLf
+    html = html & "  ['Korrigierter Kosinus-Radius', '', values[11], 'mm']," & vbLf
+    html = html & "  ['Kreisbogen-Dehnungsabsch\u00e4tzung', '', values[12], '%']," & vbLf
+    html = html & "  ['Excel-Kosinus-Dehnungsabsch\u00e4tzung', '', values[13], '%']," & vbLf
+    html = html & "  ['Korrigierte Kosinus-Dehnungsabsch\u00e4tzung', '', values[14], '%']" & vbLf
+    html = html & "]);" & vbLf
+    html = html & "const canvas = document.getElementById('profile');" & vbLf
+    html = html & "const ctx = canvas.getContext('2d');" & vbLf
+    html = html & "const scale = Math.min(650 / l2, 224 / Math.max(height, 2 * amplitude, l2 * .01));" & vbLf
+    html = html & "const left = (900 - l2 * scale) / 2;" & vbLf
+    html = html & "const x = distance => left + distance * scale;" & vbLf
+    html = html & "const y = ordinate => 276 - ordinate * scale;" & vbLf
+    html = html & "const ink = '#334d5b', blue = '#4151aa', green = '#03796d', orange = '#a45315';" & vbLf
+    html = html & "function line(x1, y1, x2, y2, color = ink, dash = [], width = 1.3) {" & vbLf
+    html = html & "  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash);" & vbLf
+    html = html & "  ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]);" & vbLf
+    html = html & "}" & vbLf
+    html = html & "function label(text, px, py, color = ink) {" & vbLf
+    html = html & "  ctx.font = '600 17px system-ui'; ctx.fillStyle = color; ctx.textAlign = 'center';" & vbLf
+    html = html & "  ctx.lineWidth = 5; ctx.strokeStyle = '#fff'; ctx.strokeText(text, px, py); ctx.fillText(text, px, py);" & vbLf
+    html = html & "}" & vbLf
+    html = html & "function dimension(x1, y1, x2, y2, color = ink) {" & vbLf
+    html = html & "  line(x1, y1, x2, y2, color);" & vbLf
+    html = html & "  const alpha = Math.atan2(y2 - y1, x2 - x1);" & vbLf
+    html = html & "  for (const [px, py, sign] of [[x1, y1, 1], [x2, y2, -1]]) {" & vbLf
+    html = html & "    for (const delta of [-.48, .48]) {" & vbLf
+    html = html & "      line(px, py, px + sign * 8 * Math.cos(alpha + delta), py + sign * 8 * Math.sin(alpha + delta), color);" & vbLf
+    html = html & "    }" & vbLf
+    html = html & "  }" & vbLf
+    html = html & "}" & vbLf
+    html = html & "function curve(points, color, dash) {" & vbLf
+    html = html & "  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.setLineDash(dash);" & vbLf
+    html = html & "  points.forEach((v, i) => ctx.lineTo(x(l2 * i / (points.length - 1)), y(v)));" & vbLf
+    html = html & "  ctx.stroke(); ctx.setLineDash([]);" & vbLf
+    html = html & "}" & vbLf
+    html = html & "const midX = x(l2 / 2), right = x(l2), baseline = y(0);" & vbLf
+    html = html & "line(left, baseline, right, baseline, '#96aab2');" & vbLf
+    html = html & "for (const edge of [left, right]) line(edge, baseline - 4, edge, 312, '#96aab2');" & vbLf
+    html = html & "dimension(left, 306, right, 306);" & vbLf
+    html = html & "label('l\u2082', midX, 330);" & vbLf
+    html = html & "curve(fit, green, []);" & vbLf
+    html = html & "const cosine = Array.from({length: 1001}, (_, i) => amplitude * (1 - Math.cos(2 * Math.PI * i / 1000)));" & vbLf
+    html = html & "curve(cosine, blue, [8, 6]);" & vbLf
+    html = html & "if (radius === null) {" & vbLf
+    html = html & "  label('Flaches Profil: A = h = 0, l\u2081 = l\u2082', midX, 246);" & vbLf
+    html = html & "} else {" & vbLf
+    html = html & "  const topCosine = y(2 * amplitude), topFit = y(height);" & vbLf
+    html = html & "  const halfHeight = y(amplitude), ampX = left - 30, heightX = right + 30;" & vbLf
+    html = html & "  const targetX = x(.28 * l2), targetY = y(cosine[280]);" & vbLf
+    html = html & "  line(x(.11 * l2), 39, targetX, targetY, blue, [4, 4]);" & vbLf
+    html = html & "  label('l\u2081 entlang der Kurve', x(.11 * l2), 31, blue);" & vbLf
+    html = html & "  if (baseline - topFit >= 20) {" & vbLf
+    html = html & "    line(midX, topFit, heightX, topFit, '#96aab2', [4, 4]);" & vbLf
+    html = html & "    line(right, baseline, heightX, baseline, '#96aab2', [4, 4]);" & vbLf
+    html = html & "    dimension(heightX, topFit, heightX, baseline, green);" & vbLf
+    html = html & "    label('h', heightX + 18, (topFit + baseline) / 2 + 6, green);" & vbLf
+    html = html & "  }" & vbLf
+    html = html & "  if (halfHeight - topCosine >= 20) {" & vbLf
+    html = html & "    line(ampX, topCosine, midX, topCosine, blue, [4, 4]);" & vbLf
+    html = html & "    line(ampX, halfHeight, midX, halfHeight, blue, [4, 4]);" & vbLf
+    html = html & "    dimension(ampX, topCosine, ampX, halfHeight, blue);" & vbLf
+    html = html & "    label('A', ampX - 16, (topCosine + halfHeight) / 2 + 5, blue);" & vbLf
+    html = html & "  }" & vbLf
+    html = html & "  const phi = angle * Math.PI / 180, xJoin = radius * Math.sin(phi);" & vbLf
+    html = html & "  const yJoin = 2 * radius * Math.sin(phi / 2) ** 2;" & vbLf
+    html = html & "  const innerJoin = l2 / 2 - xJoin;" & vbLf
+    html = html & "  const innerY = yJoin + (innerJoin - xJoin) * Math.tan(phi);" & vbLf
+    html = html & "  if ((innerJoin - xJoin) * scale >= 32 && baseline - topFit >= 24) {" & vbLf
+    html = html & "    line(x(xJoin), y(yJoin), x(innerJoin), y(innerY), orange, [], 4);" & vbLf
+    html = html & "    line(x(l2 - innerJoin), y(innerY), x(l2 - xJoin), y(yJoin), orange, [], 4);" & vbLf
+    html = html & "    label('s', x(l2 - (xJoin + innerJoin) / 2) + 22, y((yJoin + innerY) / 2) + 20, orange);" & vbLf
+    html = html & "    const startX = x(xJoin), startY = y(yJoin);" & vbLf
+    html = html & "    line(startX, startY, startX + 52, startY, orange, [4, 3]);" & vbLf
+    html = html & "    ctx.beginPath(); ctx.strokeStyle = orange; ctx.lineWidth = 1.3;" & vbLf
+    html = html & "    ctx.arc(startX, startY, 35, -phi, 0); ctx.stroke();" & vbLf
+    html = html & "    label('\u03c6', startX + 56, startY - 7, orange);" & vbLf
+    html = html & "  }" & vbLf
+    html = html & "  const radiusCenterY = y(height - radius);" & vbLf
+    html = html & "  if (radiusCenterY <= baseline && radiusCenterY - topFit >= 25) {" & vbLf
+    html = html & "    dimension(midX, topFit, midX, radiusCenterY, green);" & vbLf
+    html = html & "    label('R', midX + 18, (topFit + radiusCenterY) / 2 + 6, green);" & vbLf
+    html = html & "  }" & vbLf
+    html = html & "}" & vbLf
+    html = html & "</script>" & vbLf
+    html = html & "</body>" & vbLf
+    html = html & "</html>" & vbLf
+    WResultTemplate = html
+End Function

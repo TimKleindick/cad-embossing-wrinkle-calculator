@@ -13,6 +13,14 @@ Class WrinkleDialogs
     Public Sub ShowResult(ByVal text,ByVal page)
         MsgBox text,vbOKOnly+vbInformation,"Faltenrechner - CAD ungetestet - " & page & "/3"
     End Sub
+    Public Function ShowIllustrated(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
+        Dim succeeded
+        On Error Resume Next
+        Err.Clear
+        succeeded = WOpenResult(values, l1, l2, thickness)
+        ShowIllustrated = (Err.Number = 0 And succeeded = True)
+        On Error GoTo 0
+    End Function
     Public Sub ShowError(ByVal text)
         MsgBox "Fehler: " & text & vbCrLf & "Kein Ergebnis freigegeben. Makro erneut starten.", _
             vbOKOnly+vbExclamation,"Faltenrechner - Eingabe pruefen"
@@ -56,12 +64,52 @@ Function WEntryNumber(ByVal value,ByVal unit)
     End If
 End Function
 
+Function WJsonNumber(ByVal value)
+    If IsEmpty(value) Then
+        WJsonNumber = "null"
+    Else
+        ' CStr does not group digits. Normalize the decimal mark for JSON.
+        WJsonNumber = Replace(CStr(value), Mid(CStr(0.5), 2, 1), ".")
+    End If
+End Function
+
+Function WResultData(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
+    Dim numbers(16), fit(200), i, phi, ordinate
+    For i = 0 To UBound(numbers)
+        numbers(i) = WJsonNumber(values(i))
+    Next
+    phi = values(3) * WPI / 180
+    For i = 0 To UBound(fit)
+        ordinate = 0
+        If Not IsEmpty(values(1)) Then ordinate = WrinkleY(l2 * (i / 200), l2, values(1), phi)
+        fit(i) = WJsonNumber(ordinate)
+    Next
+    WResultData = "{""l1"":" & WJsonNumber(l1) & ",""l2"":" & WJsonNumber(l2) & _
+        ",""thickness"":" & WJsonNumber(thickness) & ",""values"":[" & Join(numbers, ",") & _
+        "],""fit"":[" & Join(fit, ",") & "]}"
+End Function
+
+Function WOpenResult(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
+    Dim fs, shell, path, report, stream
+    report = Replace(WResultTemplate(), "{{DATA}}", WResultData(values, l1, l2, thickness))
+    Set fs = CreateObject("Scripting.FileSystemObject")
+    Set shell = CreateObject("Shell.Application")
+    path = fs.BuildPath(fs.GetSpecialFolder(2).Path, "Faltengeometrie-" & fs.GetTempName & ".html")
+    Set stream = fs.CreateTextFile(path, False, False)
+    stream.Write report
+    stream.Close
+    Call shell.ShellExecute(path, "", "", "open", 1)
+    WOpenResult = True
+End Function
+
 Function WrinklePages(ByRef v,ByVal l1,ByVal l2)
     Dim a,b,c
     a="SOURCE PREVIEW - CATIA-Laufzeit/Import ungetestet" & vbCrLf
     a=a & "Excel: 1000 Segmente, Formfit ohne Laengenbedingung." & vbCrLf
-    a=a & "l1 / l2: " & l1 & " / " & l2 & " mm" & vbCrLf
-    a=a & "A: " & WEntryNumber(v(0),"mm") & vbCrLf & "R: " & WEntryNumber(v(1),"mm") & vbCrLf
+    a=a & "l1 (Soll-Laenge entlang der Referenz): " & l1 & " mm" & vbCrLf
+    a=a & "l2 (Breite zwischen den Endpunkten): " & l2 & " mm" & vbCrLf
+    a=a & "A (Kosinus-Amplitude; Scheitel bei 2A): " & WEntryNumber(v(0),"mm") & vbCrLf
+    a=a & "R (Radius der drei Kreisboegen): " & WEntryNumber(v(1),"mm") & vbCrLf
     a=a & "Hoehe: " & WEntryNumber(v(2),"mm") & vbCrLf & "Winkel: " & WEntryNumber(v(3),"deg") & vbCrLf
     a=a & "Gerade je Seite: " & WEntryNumber(v(4),"mm")
     b="Excel-Polygonlaenge: " & WEntryNumber(v(5),"mm") & vbCrLf
@@ -102,10 +150,12 @@ Function WrinkleRunChecked(ByRef ui)
         Err.Raise 5,"WrinkleEntry","Unbekannte Dialogantwort"
     End If
     values=WrinkleCalculate(l1,l2,thickness)
-    pages=WrinklePages(values,l1,l2)
-    For i=0 To 2
-        ui.ShowResult pages(i),i+1
-    Next
+    If Not ui.ShowIllustrated(values, l1, l2, thickness) Then
+        pages=WrinklePages(values,l1,l2)
+        For i=0 To 2
+            ui.ShowResult pages(i),i+1
+        Next
+    End If
     WrinkleRunChecked=True
 End Function
 

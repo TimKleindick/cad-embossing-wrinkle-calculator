@@ -52,6 +52,22 @@ class EntryTests(unittest.TestCase):
         self.assertNotRegex(source, r'(?im)^\s*Language\s*=')
         self.assertEqual((ROOT / path).read_bytes(), source.encode('ascii'))
 
+    def test_standalone_catscript_contains_the_complete_result_template(self):
+        from tools.build_entries import generated_sources
+
+        path = 'ready-to-run/CATIA_WrinkleCalculator.CATScript'
+        script = generated_sources(ROOT)[path].decode('ascii')
+        template = (ROOT / 'cad/catia/result.html').read_text(encoding='ascii')
+        _, found, body = script.partition('Function WResultTemplate()\n')
+        self.assertTrue(found, 'standalone macro is missing its report template')
+        statements = body.partition('End Function')[0].splitlines()
+        prefix = '    html = html & "'
+        suffix = '" & vbLf'
+        embedded = [line[len(prefix):-len(suffix)].replace('""', '"')
+                    for line in statements if line.startswith(prefix) and line.endswith(suffix)]
+        self.assertEqual('\n'.join(embedded) + '\n', template)
+        self.assertEqual((ROOT / path).read_bytes(), script.encode('ascii'))
+
     def test_generation_check_rejects_stale_delivery(self):
         from tools.build_entries import generated_sources,check_generated
         expected=generated_sources(ROOT)
