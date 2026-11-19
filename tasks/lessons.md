@@ -15,3 +15,5 @@
 - **For dimensioned profiles, plot both axes at the same scale and verify which curve owns each measure.** Plot representative and flat cases, and keep display sampling separate from the solver's length calculation.
 
 - **When two launchers show the same report, embed one template in both delivered files.** Verify the template and numerical payload from the standalone launchers so their labels and units stay in sync.
+
+- **Screen with the unrounded values and round only for display.** Test the boundaries and a reference strain that rounds to the same displayed percentage as the input limit.

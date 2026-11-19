@@ -42,9 +42,11 @@ The validated range is `0.001 <= l1,l2 <= 1e6`, `l2 <= l1 <= 2*l2`, and optional
 
 ## 5. Radius and simplified strain
 
-The `check cracks` worksheet reports `r_excel=l2²/(2*pi²*A)`. The report preserves this value as the **Excel estimate**. The derivative `y''(0)=4*pi²*A/l2²` gives `r_correct=l2²/(4*pi²*A)`, reported separately as the **corrected cosine radius**. The Excel radius is exactly twice the corrected radius.
+The `check cracks` worksheet reports `r_excel=l2²/(2*pi²*A)`. The calculation exposes this value as the **Excel estimate**. The derivative `y''(0)=4*pi²*A/l2²` gives `r_correct=l2²/(4*pi²*A)`, which the calculation exposes separately as the **corrected cosine radius**. The Excel radius is exactly twice the corrected radius.
 
 Optional strain in percent is `100*t/(2*r)`. This simplified estimate omits flow curves, neutral-axis shifts, tool friction, thickness changes, prior plastic deformation, and multiaxial stresses. Crack risk, manufacturability, and approval require separate assessment.
+
+The illustrated CAD report displays the existing cosine strain estimate using `r_excel`. It compares the unrounded estimate with the manually entered fracture elongation A (%). The report screens below 70% of that value as low, from 70% to below 100% as critical, and at or above 100% as high. These thresholds are a user-defined screening rule. DIN EN 755-2 specifies mechanical properties for aluminium extrusions. The input must come from an applicable tensile test or a value for the applicable product dimensions, alloy and temper. [DIN EN 755-2:2025](https://www.dinmedia.de/en/standard/din-en-755-2/393018811)
 
 ## 6. Result fields and common references
 

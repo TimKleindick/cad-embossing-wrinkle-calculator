@@ -10,8 +10,8 @@ Class WrinkleDialogs
             "Simplified t/(2r) estimate. Material approval and crack safety are outside its scope.", _
             vbYesNoCancel+vbQuestion,"Wrinkle Geometry - Source Preview")
     End Function
-    Public Sub ShowResult(ByVal text,ByVal page)
-        MsgBox text,vbOKOnly+vbInformation,"Wrinkle Geometry - Source Preview - " & page & "/3"
+    Public Sub ShowResult(ByVal text)
+        MsgBox text,vbOKOnly+vbInformation,"Wrinkle Geometry - Source Preview"
     End Sub
     Public Function ShowIllustrated(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
         Dim succeeded
@@ -60,7 +60,7 @@ Function WEntryNumber(ByVal value,ByVal unit)
     If IsEmpty(value) Then
         WEntryNumber="Not applicable or not provided"
     Else
-        WEntryNumber=FormatNumber(value,9,-1,0,0) & " " & unit
+        WEntryNumber=FormatNumber(value,2,-1,0,0) & " " & unit
     End If
 End Function
 
@@ -102,39 +102,28 @@ Function WOpenResult(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
     WOpenResult = True
 End Function
 
-Function WrinklePages(ByRef v,ByVal l1,ByVal l2)
-    Dim a,b,c
-    a="SOURCE PREVIEW - CATIA runtime and import untested" & vbCrLf
-    a=a & "Excel method with 1,000 segments and no fitted-length constraint." & vbCrLf
-    a=a & "l1 (developed target length along the cosine): " & l1 & " mm" & vbCrLf
-    a=a & "l2 (projected width between endpoints): " & l2 & " mm" & vbCrLf
-    a=a & "A (cosine amplitude, crest at 2A): " & WEntryNumber(v(0),"mm") & vbCrLf
-    a=a & "R (common radius of the three arcs): " & WEntryNumber(v(1),"mm") & vbCrLf
-    a=a & "Height h: " & WEntryNumber(v(2),"mm") & vbCrLf & "Flank angle: " & WEntryNumber(v(3),"deg") & vbCrLf
-    a=a & "Straight length per side: " & WEntryNumber(v(4),"mm")
-    b="Fitted polyline length: " & WEntryNumber(v(5),"mm") & vbCrLf
-    b=b & "Analytic fitted length: " & WEntryNumber(v(6),"mm") & vbCrLf
-    b=b & "Polyline length deviation: " & WEntryNumber(v(7),"%") & vbCrLf
-    b=b & "RMS vertical profile deviation: " & WEntryNumber(v(8),"mm") & vbCrLf
-    b=b & "Maximum vertical deviation at sample points: " & WEntryNumber(v(9),"mm") & vbCrLf
-    If Abs(v(7))>=0.1 Then b=b & "Length deviation reaches or exceeds 0.1%."
-    c="Cosine radius using the Excel formula: " & WEntryNumber(v(10),"mm") & vbCrLf
-    c=c & "Corrected cosine radius: " & WEntryNumber(v(11),"mm") & vbCrLf
-    c=c & "Circular arc strain estimate: " & WEntryNumber(v(12),"%") & vbCrLf
-    c=c & "Cosine strain using the Excel radius: " & WEntryNumber(v(13),"%") & vbCrLf
-    c=c & "Cosine strain using the corrected radius: " & WEntryNumber(v(14),"%") & vbCrLf
-    c=c & "Simplified t/(2r) estimate. Material approval and crack safety are outside its scope."
-    WrinklePages=Array(a,b,c)
+Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness)
+    Dim report
+    report="SOURCE PREVIEW - CATIA runtime and import untested" & vbCrLf
+    report=report & "Undeformed wall length l1: " & WEntryNumber(l1,"mm") & vbCrLf
+    report=report & "Deformed wall length l2 (neutral fibre): " & WEntryNumber(l2,"mm") & vbCrLf
+    report=report & "Circular arc radius R: " & WEntryNumber(v(1),"mm") & vbCrLf
+    report=report & "Height h: " & WEntryNumber(v(2),"mm") & vbCrLf
+    report=report & "Flank angle: " & WEntryNumber(v(3),"deg") & vbCrLf
+    report=report & "Wall thickness: " & WEntryNumber(thickness,"mm") & vbCrLf
+    report=report & "Calculated outer-fibre strain: " & WEntryNumber(v(13),"%") & vbCrLf
+    report=report & "l2 is the horizontal endpoint span of the neutral fibre." & vbCrLf
+    WResultText=report & "Crack-risk comparison requires the illustrated report."
 End Function
 
 Function WrinkleRunChecked(ByRef ui)
-    Dim raw,l1,l2,thickness,choice,values,pages,i
+    Dim raw,l1,l2,thickness,choice,values
     WrinkleRunChecked=False
-    raw=ui.Ask("Developed target length l1", "40")
+    raw=ui.Ask("Undeformed wall length l1", "40")
     If IsEmpty(raw) Then Exit Function
     If Trim(CStr(raw))="" Then Exit Function
     l1=WParseDecimal(raw)
-    raw=ui.Ask("Projected width l2", "30")
+    raw=ui.Ask("Deformed wall length l2 (neutral fibre, horizontal endpoint span)", "30")
     If IsEmpty(raw) Then Exit Function
     If Trim(CStr(raw))="" Then Exit Function
     l2=WParseDecimal(raw)
@@ -151,10 +140,7 @@ Function WrinkleRunChecked(ByRef ui)
     End If
     values=WrinkleCalculate(l1,l2,thickness)
     If Not ui.ShowIllustrated(values, l1, l2, thickness) Then
-        pages=WrinklePages(values,l1,l2)
-        For i=0 To 2
-            ui.ShowResult pages(i),i+1
-        Next
+        Call ui.ShowResult(WResultText(values, l1, l2, thickness))
     End If
     WrinkleRunChecked=True
 End Function

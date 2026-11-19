@@ -82,9 +82,14 @@ runpy.run_path('NX_WrinkleCalculator.py')['run_dialog'](owner=0, open_file=captu
             send(user.GetDlgItem(hwnd,104),0xf1,1)
             click()
             report=text()
-            assert '6.139413268' in report,report
-            assert '40.173837' in report and 'reaches or exceeds 0.1%' in report,report
-            assert '13.465240' in report and '26.930480' in report,report
+            assert 'Undeformed wall length l1 [mm]: 40.00' in report,report
+            assert 'Deformed wall length l2 (neutral fibre) [mm]: 30.00' in report,report
+            assert 'Circular arc radius R [mm]: 5.03' in report,report
+            assert 'Wall thickness [mm]: 2.00' in report,report
+            assert 'Calculated outer-fibre strain [%]: 13.47' in report,report
+            assert 'Crack-risk comparison requires the illustrated report.' in report,report
+            for omitted in ('Cosine amplitude', 'Straight length', 'length deviation', 'Corrected cosine'):
+                assert omitted not in report,report
             html = (Path(tmp) / 'captured-report.html').read_text(encoding='ascii')
             assert '<html lang="en">' in html
             payload = re.search(r'id="result-data" type="application/json">([^<]+)', html)
@@ -93,10 +98,10 @@ runpy.run_path('NX_WrinkleCalculator.py')['run_dialog'](owner=0, open_file=captu
             assert abs(data['fit'][100] - 12.234275) < 1e-6
             # German decimal is accepted independently of machine locale.
             set_text(hwnd,101,'40,0');click()
-            assert '6.139413268' in text(),text()
+            assert 'Undeformed wall length l1 [mm]: 40.00' in text(),text()
             # Invalid input replaces the previous successful report.
             set_text(hwnd,101,'29');click()
-            assert text().startswith('Error:') and '6.139413268' not in text(),text()
+            assert text().startswith('Error:') and 'Undeformed wall length l1 [mm]: 40.00' not in text(),text()
             # Flat input and disabled thickness ignore an invalid inactive field.
             set_text(hwnd,101,'30')
             set_text(hwnd,103,'disabled text')

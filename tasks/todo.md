@@ -114,3 +114,13 @@ Standard change using GPT-6.2-sol. Preserve both tested solver cores and package
 - [x] Verify the delivered files, browser rendering and English documentation.
 
 Review: the new standalone NX report test failed before implementation. All 24 local tests now pass. Both shipped files embed the same template. Chrome rendered the English reference and flat reports and the reference image was inspected. The Python and VBA calculation cores have no diff. Both source entry points and the optional CAD interfaces are in English. Documentation translation and verification were handled by `/root/english_guides` and `/root/english_reference`. Windows CI will exercise the actual NX dialog with a captured report and the CATScript runner. CAD host launch is a workstation check.
+
+# Compact shared report and fracture screening
+
+Standard change using GPT-6.2-sol. Preserve the two calculation cores, numeric reference data, and offline single-file delivery. Use the requested cosine strain result and manual fracture elongation input. Classify unrounded values by the requested thresholds. Keep the screening distinct from a real crack prediction and DIN requirements. Parallel work on native text fallbacks and guides by `compact_fallbacks` and `screening_docs`.
+
+- [x] Verify threshold boundaries and unchanged computational inputs.
+- [x] Simplify the shared chart and tables, then regenerate both macro files.
+- [x] Exercise browser interaction and inspect the reference sketch.
+
+Review: 25 local tests passed. Browser checks covered the reference values, the disclosure and all three bands, decimal comma, invalid input, and a flat profile without thickness. The standalone files share one template, and both solver cores and numeric reference data are unchanged. GitHub Actions records the platform checks for this revision. CAD host launch remains a workstation check.

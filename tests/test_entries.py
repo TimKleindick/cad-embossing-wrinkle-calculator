@@ -28,7 +28,7 @@ class EntryTests(unittest.TestCase):
         import struct
         self.assertGreater(len(data),300)
         self.assertEqual(struct.unpack_from('<H',data,8)[0],11)
-        for label in ['Developed target length l1 [mm]','Calculate','Close']:
+        for label in ['Undeformed wall length l1 [mm]', 'Deformed wall length l2 (neutral fibre) [mm]', 'Calculate', 'Close']:
             self.assertIn(label.encode('utf-16-le'),data)
 
     def test_generated_nx_journal_is_standalone_and_matches_reference(self):
@@ -92,6 +92,30 @@ class EntryTests(unittest.TestCase):
                     self.assertEqual(data['fit'][-1], 0)
                     self.assertAlmostEqual(data['fit'][100], result['height_mm'], places=10)
                     self.assertEqual(data['values'][1], result['radius_mm'])
+
+    def test_report_screens_unrounded_strain_at_both_thresholds(self):
+        import re
+        import shutil
+
+        node = shutil.which('node')
+        if node is None:
+            self.skipTest('Node.js is needed to exercise the shared browser rules')
+        template = (ROOT / 'cad/result.html').read_text(encoding='ascii')
+        script = re.search(r'<script id="screening-rules">(.*?)</script>', template, re.S)
+        self.assertIsNotNone(script, 'report needs shared screening rules')
+        checks = """
+const assert = require('node:assert/strict');
+for (const [strain, elongation, expected] of [
+  [6.999, 10, 'low'], [7, 10, 'critical'], [9.999, 10, 'critical'],
+  [10, 10, 'high'], [13.4652400467, 13.47, 'critical'], [0, 10, 'low'],
+  [null, 10, null], [1, null, null], [1, 0, null], [1, -2, null],
+]) assert.equal(fractureBand(strain, elongation), expected);
+assert.equal(parseFractureElongation('13,47'), 13.47);
+assert.equal(parseFractureElongation('13.47'), 13.47);
+for (const value of ['', '0', '-5', '1,000.00', 'Infinity', '15%'])
+  assert.equal(parseFractureElongation(value), null);
+"""
+        subprocess.run([node, '-e', script.group(1) + checks], check=True, cwd=ROOT)
 
     def test_generation_check_rejects_stale_delivery(self):
         from tools.build_entries import generated_sources,check_generated

@@ -1,8 +1,9 @@
 ' This harness runs the actual generated macro orchestration, with controlled IO.
 Class FixtureDialogs
-    Public answers, position, thicknessChoice, outputs, errorText, illustrated, reportData
+    Public answers, position, thicknessChoice, prompts, outputs, errorText, illustrated, reportData
     Private Sub Class_Initialize()
         position=0
+        prompts=""
         outputs=""
         errorText=""
         thicknessChoice=7
@@ -10,13 +11,14 @@ Class FixtureDialogs
         reportData=""
     End Sub
     Public Function Ask(ByVal prompt,ByVal initial)
+        prompts=prompts & prompt & vbCrLf
         Ask=answers(position)
         position=position+1
     End Function
     Public Function ConfirmThickness()
         ConfirmThickness=thicknessChoice
     End Function
-    Public Sub ShowResult(ByVal text,ByVal page)
+    Public Sub ShowResult(ByVal text)
         outputs=outputs & text & vbCrLf
     End Sub
     Public Function ShowIllustrated(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
@@ -46,18 +48,23 @@ For Each localeId In Array(1033,1031)
     fake.thicknessChoice=6
     success=WrinkleRun(fake)
     Assert success And fake.errorText="","successful entry workflow"
-    If localeId=1033 Then summary="6.139413268" Else summary="6,139413268"
-    Assert InStr(fake.outputs,summary)>0,"calculated amplitude in visible output"
-    Assert InStr(fake.outputs,"0.434593")>0 Or InStr(fake.outputs,"0,434593")>0,"length error visible"
-    Assert InStr(fake.outputs,"13.465240")>0 Or InStr(fake.outputs,"13,465240")>0,"Excel strain visible"
-    Assert InStr(fake.outputs,"reaches or exceeds 0.1%")>0,"length target status"
-    Assert InStr(fake.outputs,"cosine amplitude")>0,"fallback explains A"
+    Assert InStr(fake.prompts,"Undeformed wall length l1")>0,"l1 input label"
+    Assert InStr(fake.prompts,"Deformed wall length l2 (neutral fibre, horizontal endpoint span)")>0,"l2 input label"
+    If localeId=1033 Then summary="13.47 %" Else summary="13,47 %"
+    Assert InStr(fake.outputs,"Calculated outer-fibre strain: " & summary)>0,"rounded calculated strain"
+    Assert InStr(fake.outputs,"Undeformed wall length l1")>0,"l1 naming"
+    Assert InStr(fake.outputs,"Deformed wall length l2 (neutral fibre)")>0,"l2 naming"
+    Assert InStr(fake.outputs,"horizontal endpoint span")>0,"l2 definition"
+    Assert InStr(fake.outputs,"Circular arc radius R")>0,"circular arc terminology"
+    Assert InStr(fake.outputs,"Crack-risk comparison requires the illustrated report.")>0,"fracture comparison location"
+    Assert InStr(fake.outputs,"cosine amplitude")=0 And InStr(fake.outputs,"Straight length")=0,"omit A and s"
+    Assert InStr(fake.outputs,"Maximum vertical deviation")=0 And InStr(fake.outputs,"Corrected cosine")=0,"omit diagnostics"
     Set fake=New FixtureDialogs
     fake.answers=Array("40","30","2,5")
     fake.thicknessChoice=6
     fake.illustrated=True
     success=WrinkleRun(fake)
-    Assert success And fake.outputs="" And fake.errorText="","illustrated report instead of text pages"
+    Assert success And fake.outputs="" And fake.errorText="","illustrated report instead of text fallback"
     Assert InStr(fake.reportData,"{""l1"":40,""l2"":30,""thickness"":2.5,")=1,"report input values and JSON decimal"
     Assert InStr(fake.reportData,"""fit"":[0,")>0,"fitted curve starts at zero"
     Assert Right(fake.reportData,4)=",0]}","fitted curve ends at zero"

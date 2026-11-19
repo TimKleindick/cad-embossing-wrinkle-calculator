@@ -4,7 +4,7 @@
 
 Use **`ready-to-run/CATIA_WrinkleCalculator.CATScript`** on a Windows workstation with CATIA V5 R32, a working VBScript engine, and permission to run macros. The standalone file includes the calculation core, native input prompts, and the illustrated report. It runs without a CATVBA project, UserForm, Excel installation, or Python. For a designer-built interface, see the [optional UserForm guide](CATIA-V5-R32-UserForm-optional.md).
 
-The report uses the Windows default browser and the Windows components `Scripting.FileSystemObject` and `Shell.Application`. If creating or opening the report fails, the macro shows three text dialogs. Windows CI checks the macro source and calculation through Windows Script Host. The macro's registration, dialogs, report launch, licensing and installation in CATIA V5 R32 still need workstation verification.
+The report uses the Windows default browser and the Windows components `Scripting.FileSystemObject` and `Shell.Application`. If creating or opening the report fails, the macro shows text results. Windows CI checks the macro source and calculation through Windows Script Host. The macro's registration, dialogs, report launch, licensing and installation in CATIA V5 R32 still need workstation verification.
 
 Microsoft lists VBScript as deprecated and available as a Windows Feature on Demand. If the engine is missing or macros are blocked, check the supported CATIA and Windows configuration with IT. [Microsoft VBScript status](https://learn.microsoft.com/en-us/windows/whats-new/deprecated-features-resources)
 
@@ -29,33 +29,31 @@ Add the directory once and reuse it from the macro dialog. Check whether your R3
 
 ## 3. Check the illustrated results
 
-1. Enter `40` at **Developed target length l1** and `30` at **Projected width l2**.
-2. Choose **Yes** at **Estimate strain from wall thickness?**, enter `2` at **Optional wall thickness**, and confirm. All values are in mm. The input accepts a decimal point or comma, for example `40.0` or `40,0`. Enter plain numbers without grouping separators, units, or exponents.
-3. The Windows default browser opens **Wrinkle geometry**, the same offline English report as NX, with both profiles, dimension arrows, definitions and numerical results. The report HTML remains in the Windows temporary directory. At a launch error, the macro shows three English text dialogs. The text dialogs follow the Windows number locale.
+1. Enter `40` for **Undeformed wall length l1** and `30` for **Deformed wall length l2 (neutral fibre)**. The calculator uses `l1` as the target length along the cosine and `l2` as the horizontal span between the endpoints of the deformed neutral-fibre profile.
+2. Choose **Yes** at **Estimate strain from wall thickness?**, enter `2` for the wall thickness, and confirm. All lengths are in mm. Use a decimal point or comma, with no grouping separators, units, or exponents.
+3. The Windows default browser opens **Wrinkle geometry**, the same offline English report as NX. The sketch labels the three circular arcs with their common radius. The report HTML remains in the Windows temporary directory. If launch fails, the macro shows text results using the Windows number locale.
+4. Open **More information** to see the length and shape comparison. The first row shows the entered `l1`. The relative length deviation still compares the fitted polyline with `l1`.
 
-| Report section | Quantity | Approximate result |
-|---|---|---:|
-| Profile dimensions | Cosine amplitude A | 6.139413268 mm |
-| Profile dimensions | Fitted arc radius R | 5.0322554 mm |
-| Profile dimensions | Fitted profile height h | 12.2342750 mm |
-| Profile dimensions | Flank angle φ | 49.8407463° |
-| Profile dimensions | Straight segment s per side | 11.3319680 mm |
-| Length and shape comparison | Fitted polyline length | 40.1738373 mm |
-| Length and shape comparison | Analytical length of the fitted profile | 40.1738725 mm |
-| Length and shape comparison | Fitted polyline length deviation from l1 | **+0.434593%** |
-| Length and shape comparison | RMS and maximum vertical shape deviations at the sample points | 0.096220 / 0.181006 mm |
-| Radii and strain estimates | Excel and corrected cosine radii | 7.426529319 / 3.713264660 mm |
-| Radii and strain estimates | Excel and corrected cosine strain estimates | 13.465240 / 26.930480% |
-| Radii and strain estimates | Fitted arc strain estimate | 19.871805% |
+| Quantity | Report value |
+|---|---:|
+| Undeformed wall length l1 | 40.00 mm |
+| Deformed wall length l2 (neutral fibre) | 30.00 mm |
+| Circular arc radius R | 5.03 mm |
+| Fitted profile height h | 12.23 mm |
+| Flank angle φ | 49.84° |
+| Analytical length of the fitted profile | 40.17 mm |
+| Fitted polyline length deviation from l1 | +0.43% |
+| RMS and maximum sampled vertical shape deviations | 0.10 / 0.18 mm |
+| Calculated outer-fibre strain | 13.47% |
 
-The report shows that the length deviation misses the 0.1% target. The fit reproduces the original Excel method without adjusting the length. The strain values are simplified `t/(2r)` estimates and provide no material approval or crack resistance assessment.
+In **Strain and fracture screening**, enter fracture elongation A (%) from an applicable tensile test or DIN EN 755-2. Verify the alloy, temper and product dimensions before choosing the value. For this reference case, `20` gives the low band, `16` the critical band and `12` the high band. The report compares the full-precision strain with 70% and 100% of the entered value. The two-decimal display does not affect the assessment. The bands are a screening rule and cannot establish whether cracking will occur. [DIN EN 755-2:2025](https://www.dinmedia.de/en/standard/din-en-755-2/393018811)
 
 ## 4. Try cancellation and other inputs
 
 - **Cancel** or an empty value ends the run before calculation. CATIA's input box reports a blank confirmation and a cancellation the same way.
 - **No** at the wall thickness prompt calculates without strain estimates. **Cancel** ends the run. **Yes** requires a wall thickness value.
 - Try `29 / 30`, text in a length field, or negative thickness. The calculator should show an error without a success report. Supported lengths are 0.001 to 1,000,000 mm with `l2 <= l1 <= 2*l2`. Optional wall thickness ranges from 0 to 1,000,000 mm.
-- Try `30 / 30` with thickness off. The profile is flat, with zero amplitude, height, angle and deviations. Each straight segment is 15 mm, the fit length is 30 mm, and the radii and strain estimates are unavailable.
+- Try `30 / 30` with thickness off. The profile is flat, with zero height, angle and deviations. The circular arc radius and the strain estimate are unavailable.
 - Try `80 / 60 / 4`. Absolute lengths double and angles, relative errors and strain estimates stay the same.
 - Verify that CATIA is available after the report opens. Run the macro again and cancel after the first input. Then restart CATIA, check the directory registration, and verify that the macro leaves all geometry and document state unchanged.
 

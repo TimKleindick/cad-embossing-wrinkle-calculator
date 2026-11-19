@@ -196,15 +196,18 @@ REPORT_TEMPLATE = (
     '.plot{overflow-x:auto}canvas{width:100%;min-width:640px;height:auto;display:block}\n'
     'figcaption{display:flex;gap:12px 26px;flex-wrap:wrap;color:#364d59;font-size:.9rem}\n'
     '.key{display:inline-block;width:24px;margin-right:8px;border-top:3px solid #03796d;vertical-align:middle}\n'
-    '.cosine{border-color:#4151aa;border-top-style:dashed}.tangent{border-color:#a45315}\n'
-    '.sections{display:grid;grid-template-columns:1fr 1fr;gap:16px}.sections section{min-width:0}\n'
-    'section.primary{grid-column:1/-1}\n'
+    '.cosine{border-color:#4151aa;border-top-style:dashed}\n'
+    'details{margin-top:20px}summary{cursor:pointer;width:max-content;padding:8px 13px;border:1px solid #91a9af;border-radius:6px;background:#fff;font-weight:650}\n'
+    'details section{margin-top:10px}\n'
     'table{width:100%;border-collapse:collapse;font-size:.94rem}\n'
     'th,td{padding:7px 0;border-bottom:1px solid #e7eef0;text-align:left;vertical-align:top}\n'
     'tr:last-child th,tr:last-child td{border-bottom:0}th{padding-right:12px;font-weight:600;width:30%}\n'
-    'td.value{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right;font-weight:650}\n'
+    'td.value{font-variant-numeric:tabular-nums;text-align:right;font-weight:650}\n'
     '.note{margin-top:10px;font-size:.87rem}.warning{color:#8d3b12;font-weight:650}\n'
-    '@media(max-width:720px){.sections{display:block}th,td{padding:6px 3px}}\n'
+    'input{font:inherit;text-align:right;width:7rem;padding:5px;border:1px solid #91a9af;border-radius:4px}\n'
+    'input[aria-invalid="true"]{border-color:#a12323}\n'
+    '.low{color:#07665a}.critical{color:#8d3b12}.high{color:#a12323}\n'
+    '@media(max-width:720px){th,td{padding:6px 3px}th{width:45%}}\n'
     '</style>\n'
     '</head>\n'
     '<body>\n'
@@ -216,85 +219,122 @@ REPORT_TEMPLATE = (
     '<figure>\n'
     '<h2>Profile and dimensions</h2>\n'
     '<div class="plot">\n'
-    '<canvas id="profile" width="900" height="350" role="img" aria-label="Wrinkle profile with dimensions A, l1, l2, h, R, &phi; and s">\n'
-    'The dimensions and their definitions are listed in the table.\n'
+    '<canvas id="profile" width="1000" height="350" role="img" aria-label="Wrinkle profile with dimensions l1, l2, h, R and &phi;">\n'
+    'The dimension values are listed in the table.\n'
     '</canvas>\n'
     '</div>\n'
     '<figcaption>\n'
     '<span><i class="key cosine"></i>Cosine reference with target length l<sub>1</sub></span>\n'
-    '<span><i class="key"></i>Fitted profile with three arcs and two straight segments</span>\n'
-    '<span><i class="key tangent"></i>Straight segment s on each side</span>\n'
+    '<span><i class="key"></i>Fitted profile with three circular arcs</span>\n'
     '</figcaption>\n'
     '</figure>\n'
-    '<div class="sections">\n'
-    '<section class="primary" aria-labelledby="geometry-title">\n'
+    '<section aria-labelledby="geometry-title">\n'
     '<h2 id="geometry-title">What do the dimensions mean?</h2>\n'
     '<table aria-labelledby="geometry-title"><tbody id="geometry"></tbody></table>\n'
+    '<p class="note">l<sub>2</sub> is the horizontal span between the neutral-fibre endpoints in this model.</p>\n'
     '</section>\n'
+    '<section aria-labelledby="strain-title">\n'
+    '<h2 id="strain-title">Strain and fracture screening</h2>\n'
+    '<table aria-labelledby="strain-title"><tbody>\n'
+    '<tr><th scope="row">Wall thickness</th><td class="value" id="wall-thickness"></td></tr>\n'
+    '<tr><th scope="row"><label for="fracture-elongation">Fracture elongation A</label></th>\n'
+    '<td class="value"><input id="fracture-elongation" type="text" inputmode="decimal" maxlength="24" aria-describedby="fracture-source" placeholder="e.g. 15.00"> %</td></tr>\n'
+    '<tr><th scope="row">Calculated outer-fibre strain</th><td class="value" id="outer-strain"></td></tr>\n'
+    '<tr><th scope="row">Fracture risk screening</th><td class="value" id="fracture-band" aria-live="polite"></td></tr>\n'
+    '</tbody></table>\n'
+    '<p class="note" id="fracture-source">Enter the elongation from a tensile test or the applicable value from DIN EN 755-2.</p>\n'
+    '<p class="note">The estimate is for the outer fibre at the point of maximum cosine curvature. The 70% and 100% bands are screening rules. Actual cracking requires application-specific validation.</p>\n'
+    '</section>\n'
+    '<details>\n'
+    '<summary>More information</summary>\n'
     '<section aria-labelledby="deviation-title">\n'
     '<h2 id="deviation-title">Length and shape comparison</h2>\n'
     '<table aria-labelledby="deviation-title"><tbody id="deviation"></tbody></table>\n'
     '<p class="note" id="length-target"></p>\n'
     '</section>\n'
-    '<section aria-labelledby="strain-title">\n'
-    '<h2 id="strain-title">Radii and strain estimates</h2>\n'
-    '<table aria-labelledby="strain-title"><tbody id="strain"></tbody></table>\n'
-    '<p class="note">Simplified t/(2r) estimate. Material approval and crack safety are outside its scope.</p>\n'
-    '</section>\n'
-    '</div>\n'
+    '</details>\n'
     '</main>\n'
     '<script id="result-data" type="application/json">{{DATA}}</script>\n'
+    '<script id="screening-rules">\n'
+    "'use strict';\n"
+    'function parseFractureElongation(text) {\n'
+    '  const value = text.trim();\n'
+    '  if (!/^(?:\\d+(?:[.,]\\d+)?|[.,]\\d+)$/.test(value)) return null;\n'
+    "  const number = Number(value.replace(',', '.'));\n"
+    '  return Number.isFinite(number) && number > 0 ? number : null;\n'
+    '}\n'
+    'function fractureBand(strain, elongation) {\n'
+    '  if (!Number.isFinite(strain) || strain < 0 || !Number.isFinite(elongation) || elongation <= 0) return null;\n'
+    "  if (strain >= elongation) return 'high';\n"
+    "  if (strain * 10 < elongation * 7) return 'low';\n"
+    "  return 'critical';\n"
+    '}\n'
+    '</script>\n'
     '<script>\n'
     "'use strict';\n"
     "const {l1, l2, thickness, values, fit} = JSON.parse(document.getElementById('result-data').textContent);\n"
-    'const [amplitude, radius, height, angle, straight] = values;\n'
-    "const format = new Intl.NumberFormat('en-GB', {maximumFractionDigits: 9, useGrouping: false});\n"
+    'const [amplitude, radius, height, angle] = values;\n'
+    "const format = new Intl.NumberFormat('en-GB', {minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false});\n"
+    "const withUnit = (value, unit) => value === null ? '\\u2013' : `${format.format(value)} ${unit}`;\n"
     'function table(id, rows) {\n'
     '  const body = document.getElementById(id);\n'
-    '  for (const [label, definition, value, unit] of rows) {\n'
+    '  for (const [label, value, unit] of rows) {\n'
     '    const row = body.insertRow();\n'
     "    const header = document.createElement('th');\n"
     "    header.scope = 'row';\n"
     '    header.textContent = label;\n'
     '    row.append(header);\n'
-    '    if (definition) row.insertCell().textContent = definition;\n'
     '    const cell = row.insertCell();\n'
     "    cell.className = 'value';\n"
-    "    cell.textContent = value === null ? '\\u2013' : `${format.format(value)} ${unit}`;\n"
+    '    cell.textContent = withUnit(value, unit);\n'
     '  }\n'
     '}\n'
     "table('geometry', [\n"
-    "  ['l\\u2081 \\u00b7 Developed target length', 'Length along the cosine reference from end to end, measured as a 1,000-segment polyline.', l1, 'mm'],\n"
-    "  ['l\\u2082 \\u00b7 Projected width', 'Horizontal distance between the profile endpoints.', l2, 'mm'],\n"
-    "  ['A \\u00b7 Cosine amplitude', 'Vertical distance from the cosine midline to its crest. The cosine crest is 2A above the baseline.', amplitude, 'mm'],\n"
-    "  ['h \\u00b7 Fitted profile height', 'Vertical distance from the baseline to the crest of the fitted profile.', height, 'mm'],\n"
-    "  ['R \\u00b7 Arc radius', 'Common radius of the three arcs in the fitted profile.', radius, 'mm'],\n"
-    "  ['\\u03c6 \\u00b7 Flank angle', 'Angle between the straight flank and the horizontal.', angle, '\\u00b0'],\n"
-    "  ['s \\u00b7 Straight length per side', 'Length of the straight segment between two arcs.', straight, 'mm']\n"
+    "  ['l\\u2081 \\u00b7 Undeformed wall length', l1, 'mm'],\n"
+    "  ['l\\u2082 \\u00b7 Deformed wall length (neutral fibre)', l2, 'mm'],\n"
+    "  ['h \\u00b7 Fitted profile height', height, 'mm'],\n"
+    "  ['R \\u00b7 Circular arc radius', radius, 'mm'],\n"
+    "  ['\\u03c6 \\u00b7 Flank angle', angle, '\\u00b0']\n"
     ']);\n'
     "table('deviation', [\n"
-    "  ['Fitted polyline length', '', values[5], 'mm'],\n"
-    "  ['Analytic fitted length', '', values[6], 'mm'],\n"
-    "  ['Length deviation from l\\u2081', '', values[7], '%'],\n"
-    "  ['RMS vertical profile deviation', '', values[8], 'mm'],\n"
-    "  ['Maximum vertical deviation at sample points', '', values[9], 'mm']\n"
+    "  ['Entered length l\\u2081', l1, 'mm'],\n"
+    "  ['Analytic fitted length', values[6], 'mm'],\n"
+    "  ['Fitted polyline deviation from l\\u2081', values[7], '%'],\n"
+    "  ['RMS vertical profile deviation', values[8], 'mm'],\n"
+    "  ['Maximum vertical deviation at sample points', values[9], 'mm']\n"
     ']);\n'
     "const target = document.getElementById('length-target');\n"
     'const meetsTarget = Math.abs(values[7]) < 0.1;\n'
-    "target.textContent = meetsTarget ? 'Length deviation is below 0.1%.' : 'Length deviation reaches or exceeds 0.1%.';\n"
+    "target.textContent = meetsTarget ? 'Length deviation is below 0.10%.' : 'Length deviation reaches or exceeds 0.10%.';\n"
     "if (!meetsTarget) target.classList.add('warning');\n"
-    "table('strain', [\n"
-    "  ['Optional wall thickness t', '', thickness, 'mm'],\n"
-    "  ['Cosine radius using the Excel formula', '', values[10], 'mm'],\n"
-    "  ['Corrected cosine radius', '', values[11], 'mm'],\n"
-    "  ['Circular arc strain estimate', '', values[12], '%'],\n"
-    "  ['Cosine strain using the Excel radius', '', values[13], '%'],\n"
-    "  ['Cosine strain using the corrected radius', '', values[14], '%']\n"
-    ']);\n'
+    'const strain = values[13];\n'
+    "document.getElementById('wall-thickness').textContent = withUnit(thickness, 'mm');\n"
+    "document.getElementById('outer-strain').textContent = withUnit(strain, '%');\n"
+    "const elongationInput = document.getElementById('fracture-elongation');\n"
+    "const assessment = document.getElementById('fracture-band');\n"
+    'const bandLabels = {\n'
+    "  low: 'Low (below 70% of fracture elongation)',\n"
+    "  critical: 'Critical (70% to below 100% of fracture elongation)',\n"
+    "  high: 'High (at or above fracture elongation)'\n"
+    '};\n'
+    'function updateAssessment() {\n'
+    '  const raw = elongationInput.value.trim();\n'
+    '  const elongation = parseFractureElongation(raw);\n'
+    '  const band = fractureBand(strain, elongation);\n'
+    "  const invalid = raw !== '' && elongation === null;\n"
+    "  elongationInput.setAttribute('aria-invalid', String(invalid));\n"
+    "  assessment.className = band ? `value ${band}` : 'value';\n"
+    '  if (band) assessment.textContent = bandLabels[band];\n'
+    "  else if (invalid) assessment.textContent = 'Enter a positive percentage.';\n"
+    "  else if (strain === null) assessment.textContent = 'Wall thickness required.';\n"
+    "  else assessment.textContent = 'Enter fracture elongation to assess.';\n"
+    '}\n'
+    "elongationInput.addEventListener('input', updateAssessment);\n"
+    'updateAssessment();\n'
     "const canvas = document.getElementById('profile');\n"
     "const ctx = canvas.getContext('2d');\n"
     'const scale = Math.min(650 / l2, 224 / Math.max(height, 2 * amplitude, l2 * .01));\n'
-    'const left = (900 - l2 * scale) / 2;\n'
+    'const left = (canvas.width - l2 * scale) / 2;\n'
     'const x = distance => left + distance * scale;\n'
     'const y = ordinate => 276 - ordinate * scale;\n'
     "const ink = '#334d5b', blue = '#4151aa', green = '#03796d', orange = '#a45315';\n"
@@ -324,49 +364,55 @@ REPORT_TEMPLATE = (
     "line(left, baseline, right, baseline, '#96aab2');\n"
     "for (const edge of [left, right]) line(edge, baseline - 4, edge, 312, '#96aab2');\n"
     'dimension(left, 306, right, 306);\n'
-    "label('l\\u2082', midX, 330);\n"
+    "label(`l\\u2082 = ${withUnit(l2, 'mm')}`, midX, 330);\n"
     'curve(fit, green, []);\n'
     'const cosine = Array.from({length: 1001}, (_, i) => amplitude * (1 - Math.cos(2 * Math.PI * i / 1000)));\n'
     'curve(cosine, blue, [8, 6]);\n'
     'if (radius === null) {\n'
-    "  label('Flat profile: A = h = 0, l\\u2081 = l\\u2082', midX, 246);\n"
+    "  label(`Flat profile, h = ${withUnit(height, 'mm')}`, midX, 243);\n"
+    "  label(`l\\u2081 = ${withUnit(l1, 'mm')}`, midX, 266, blue);\n"
     '} else {\n'
-    '  const topCosine = y(2 * amplitude), topFit = y(height);\n'
-    '  const halfHeight = y(amplitude), ampX = left - 30, heightX = right + 30;\n'
+    '  const topFit = y(height), heightX = right + 147;\n'
     '  const targetX = x(.28 * l2), targetY = y(cosine[280]);\n'
     '  line(x(.11 * l2), 39, targetX, targetY, blue, [4, 4]);\n'
-    "  label('l\\u2081 along the curve', x(.11 * l2), 31, blue);\n"
+    "  label(`l\\u2081 = ${withUnit(l1, 'mm')}`, x(.11 * l2), 31, blue);\n"
     '  if (baseline - topFit >= 20) {\n'
     "    line(midX, topFit, heightX, topFit, '#96aab2', [4, 4]);\n"
     "    line(right, baseline, heightX, baseline, '#96aab2', [4, 4]);\n"
     '    dimension(heightX, topFit, heightX, baseline, green);\n'
-    "    label('h', heightX + 18, (topFit + baseline) / 2 + 6, green);\n"
     '  }\n'
-    '  if (halfHeight - topCosine >= 20) {\n'
-    '    line(ampX, topCosine, midX, topCosine, blue, [4, 4]);\n'
-    '    line(ampX, halfHeight, midX, halfHeight, blue, [4, 4]);\n'
-    '    dimension(ampX, topCosine, ampX, halfHeight, blue);\n'
-    "    label('A', ampX - 16, (topCosine + halfHeight) / 2 + 5, blue);\n"
-    '  }\n'
-    '  const phi = angle * Math.PI / 180, xJoin = radius * Math.sin(phi);\n'
+    "  label(`h = ${withUnit(height, 'mm')}`, heightX - 68, (topFit + baseline) / 2 + 6, green);\n"
+    '\n'
+    '  const phi = angle * Math.PI / 180;\n'
+    '  const xJoin = radius * Math.sin(phi);\n'
     '  const yJoin = 2 * radius * Math.sin(phi / 2) ** 2;\n'
     '  const innerJoin = l2 / 2 - xJoin;\n'
     '  const innerY = yJoin + (innerJoin - xJoin) * Math.tan(phi);\n'
-    '  if ((innerJoin - xJoin) * scale >= 32 && baseline - topFit >= 24) {\n'
-    '    line(x(xJoin), y(yJoin), x(innerJoin), y(innerY), orange, [], 4);\n'
-    '    line(x(l2 - innerJoin), y(innerY), x(l2 - xJoin), y(yJoin), orange, [], 4);\n'
-    "    label('s', x(l2 - (xJoin + innerJoin) / 2) + 22, y((yJoin + innerY) / 2) + 20, orange);\n"
+    '  const flankLengthPx = Math.hypot((innerJoin - xJoin) * scale, (innerY - yJoin) * scale);\n'
+    '  if (flankLengthPx >= 36 && baseline - topFit >= 36) {\n'
     '    const startX = x(xJoin), startY = y(yJoin);\n'
-    '    line(startX, startY, startX + 52, startY, orange, [4, 3]);\n'
+    '    const arcSize = Math.min(37, flankLengthPx * .47);\n'
+    '    line(startX, startY, startX + arcSize + 18, startY, orange, [4, 3]);\n'
     '    ctx.beginPath(); ctx.strokeStyle = orange; ctx.lineWidth = 1.3;\n'
-    '    ctx.arc(startX, startY, 35, -phi, 0); ctx.stroke();\n'
-    "    label('\\u03c6', startX + 56, startY - 7, orange);\n"
+    '    ctx.arc(startX, startY, arcSize, -phi, 0); ctx.stroke();\n'
+    "    label(`\\u03c6 = ${withUnit(angle, '\\u00b0')}`, startX + arcSize + 57, startY - 12, orange);\n"
     '  }\n'
-    '  const radiusCenterY = y(height - radius);\n'
-    '  if (radiusCenterY <= baseline && radiusCenterY - topFit >= 25) {\n'
-    '    dimension(midX, topFit, midX, radiusCenterY, green);\n'
-    "    label('R', midX + 18, (topFit + radiusCenterY) / 2 + 6, green);\n"
+    '\n'
+    '  function radiusCallout(pointX, pointY, centreX, centreY, labelX, labelY) {\n'
+    '    const endX = x(pointX), endY = y(pointY), cx = x(centreX), cy = y(centreY);\n'
+    '    const fits = cy >= 40 && cy <= baseline + 6 && Math.hypot(cx - endX, cy - endY) >= 20;\n'
+    '    if (fits) dimension(cx, cy, endX, endY, green);\n'
+    '    const anchorX = fits ? (cx + endX) / 2 : endX;\n'
+    '    const anchorY = fits ? (cy + endY) / 2 : endY;\n'
+    '    line(labelX, labelY - 5, anchorX, anchorY, green, [3, 3]);\n'
+    "    label(`R = ${withUnit(radius, 'mm')}`, labelX, labelY, green);\n"
     '  }\n'
+    '  // The end circles are centred above the endpoints. The crest circle is centred below the crest.\n'
+    '  const arcX = radius * Math.sin(phi / 2);\n'
+    '  const arcY = 2 * radius * Math.sin(phi / 4) ** 2;\n'
+    '  radiusCallout(arcX, arcY, 0, radius, left - 68, 232);\n'
+    '  radiusCallout(l2 / 2, height, l2 / 2, height - radius, midX + 56, Math.min(topFit + 103, 217));\n'
+    '  radiusCallout(l2 - arcX, arcY, l2, radius, right + 68, 246);\n'
     '}\n'
     '</script>\n'
     '</body>\n'
@@ -396,27 +442,22 @@ def parse_decimal(text):
     return float(text.replace(',','.'))
 
 
-def format_report(result):
-    fields=[('l1_mm','Developed target length l1 [mm]'),('l2_mm','Projected width l2 [mm]'),
-            ('amplitude_mm','Cosine amplitude A [mm]'),('radius_mm','Arc radius R [mm]'),('height_mm','Height h [mm]'),
-            ('phi_deg','Flank angle [deg]'),('straight_mm','Straight length per side [mm]'),
-            ('fit_polygon_mm','Fitted polyline length [mm]'),('fit_analytic_mm','Analytic fitted length [mm]'),
-            ('length_error_pct','Polyline length deviation [%]'),
-            ('analytic_length_error_pct','Analytic length deviation [%]'),
-            ('rms_form_error_mm','RMS vertical profile deviation [mm]'),
-            ('max_form_error_mm','Maximum vertical deviation at sample points [mm]'),
-            ('cosine_radius_excel_mm','Cosine radius using the Excel formula [mm]'),
-            ('cosine_radius_corrected_mm','Corrected cosine radius [mm]'),
-            ('cosine_strain_excel_pct','Cosine strain using the Excel radius [%]'),
-            ('cosine_strain_corrected_pct','Cosine strain using the corrected radius [%]'),
-            ('arc_strain_pct','Circular arc strain estimate [%]')]
-    lines=['Excel method with 1,000 segments and no fitted-length constraint.']
-    for key,label in fields:
-        value=result[key]
-        lines.append(label+': '+('Not applicable or not provided' if value is None else format(value,'.9f')))
-    if abs(result['length_error_pct'])>=.1:
-        lines.append('Length deviation reaches or exceeds 0.1%.')
-    lines.append('Simplified t/(2r) estimate. Material approval and crack safety are outside its scope.')
+def format_report(result, thickness=None):
+    fields = (
+        ('Undeformed wall length l1 [mm]', result['l1_mm']),
+        ('Deformed wall length l2 (neutral fibre) [mm]', result['l2_mm']),
+        ('Circular arc radius R [mm]', result['radius_mm']),
+        ('Height h [mm]', result['height_mm']),
+        ('Flank angle [deg]', result['phi_deg']),
+        ('Wall thickness [mm]', thickness),
+        ('Calculated outer-fibre strain [%]', result['cosine_strain_excel_pct']),
+    )
+    lines = [
+        f'{label}: {value:.2f}' if value is not None else f'{label}: Not applicable or not provided'
+        for label, value in fields
+    ]
+    lines.append('l2 is the horizontal endpoint span of the neutral fibre.')
+    lines.append('Crack-risk comparison requires the illustrated report.')
     return '\r\n'.join(lines)
 
 
@@ -463,13 +504,13 @@ def dialog_template():
     tab=0x10000
     # id, standard control class atom, text, x,y,w,h, style, extended style
     controls=[
-        (10001,0x82,'Developed target length l1 [mm]',12,12,150,14,0,0),
-        (101,0x81,'40',174,10,95,16,tab|0x80,0x200),
-        (10002,0x82,'Projected width l2 [mm]',12,36,150,14,0,0),
-        (102,0x81,'30',174,34,95,16,tab|0x80,0x200),
+        (10001,0x82,'Undeformed wall length l1 [mm]',12,12,187,14,0,0),
+        (101,0x81,'40',204,10,90,16,tab|0x80,0x200),
+        (10002,0x82,'Deformed wall length l2 (neutral fibre) [mm]',12,36,187,14,0,0),
+        (102,0x81,'30',204,34,90,16,tab|0x80,0x200),
         (104,0x80,'Estimate strain from wall thickness',12,60,250,14,tab|3,0),
-        (10003,0x82,'Wall thickness [mm]',12,84,150,14,0,0),
-        (103,0x81,'2',174,82,95,16,tab|0x80,0x200),
+        (10003,0x82,'Wall thickness [mm]',12,84,187,14,0,0),
+        (103,0x81,'2',204,82,90,16,tab|0x80,0x200),
         (1,0x80,'Calculate',304,10,68,20,tab|1,0),
         (2,0x80,'Close',382,10,72,20,tab,0),
         (10004,0x82,'SOURCE PREVIEW - NX runtime and installation untested',12,110,440,14,0,0),
@@ -523,7 +564,7 @@ def run_dialog(owner=None, open_file=None):
                 except (ValueError,ArithmeticError) as exc:
                     text='Error: '+str(exc)+'\r\nNo result.'
                 else:
-                    text=format_report(result)
+                    text=format_report(result, thickness)
                     try:
                         open_illustrated_report(result, thickness, opener=open_file)
                     except (OSError, NotImplementedError):

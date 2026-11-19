@@ -21,27 +21,22 @@ def parse_decimal(text):
     return float(text.replace(',','.'))
 
 
-def format_report(result):
-    fields=[('l1_mm','Developed target length l1 [mm]'),('l2_mm','Projected width l2 [mm]'),
-            ('amplitude_mm','Cosine amplitude A [mm]'),('radius_mm','Arc radius R [mm]'),('height_mm','Height h [mm]'),
-            ('phi_deg','Flank angle [deg]'),('straight_mm','Straight length per side [mm]'),
-            ('fit_polygon_mm','Fitted polyline length [mm]'),('fit_analytic_mm','Analytic fitted length [mm]'),
-            ('length_error_pct','Polyline length deviation [%]'),
-            ('analytic_length_error_pct','Analytic length deviation [%]'),
-            ('rms_form_error_mm','RMS vertical profile deviation [mm]'),
-            ('max_form_error_mm','Maximum vertical deviation at sample points [mm]'),
-            ('cosine_radius_excel_mm','Cosine radius using the Excel formula [mm]'),
-            ('cosine_radius_corrected_mm','Corrected cosine radius [mm]'),
-            ('cosine_strain_excel_pct','Cosine strain using the Excel radius [%]'),
-            ('cosine_strain_corrected_pct','Cosine strain using the corrected radius [%]'),
-            ('arc_strain_pct','Circular arc strain estimate [%]')]
-    lines=['Excel method with 1,000 segments and no fitted-length constraint.']
-    for key,label in fields:
-        value=result[key]
-        lines.append(label+': '+('Not applicable or not provided' if value is None else format(value,'.9f')))
-    if abs(result['length_error_pct'])>=.1:
-        lines.append('Length deviation reaches or exceeds 0.1%.')
-    lines.append('Simplified t/(2r) estimate. Material approval and crack safety are outside its scope.')
+def format_report(result, thickness=None):
+    fields = (
+        ('Undeformed wall length l1 [mm]', result['l1_mm']),
+        ('Deformed wall length l2 (neutral fibre) [mm]', result['l2_mm']),
+        ('Circular arc radius R [mm]', result['radius_mm']),
+        ('Height h [mm]', result['height_mm']),
+        ('Flank angle [deg]', result['phi_deg']),
+        ('Wall thickness [mm]', thickness),
+        ('Calculated outer-fibre strain [%]', result['cosine_strain_excel_pct']),
+    )
+    lines = [
+        f'{label}: {value:.2f}' if value is not None else f'{label}: Not applicable or not provided'
+        for label, value in fields
+    ]
+    lines.append('l2 is the horizontal endpoint span of the neutral fibre.')
+    lines.append('Crack-risk comparison requires the illustrated report.')
     return '\r\n'.join(lines)
 
 
@@ -88,13 +83,13 @@ def dialog_template():
     tab=0x10000
     # id, standard control class atom, text, x,y,w,h, style, extended style
     controls=[
-        (10001,0x82,'Developed target length l1 [mm]',12,12,150,14,0,0),
-        (101,0x81,'40',174,10,95,16,tab|0x80,0x200),
-        (10002,0x82,'Projected width l2 [mm]',12,36,150,14,0,0),
-        (102,0x81,'30',174,34,95,16,tab|0x80,0x200),
+        (10001,0x82,'Undeformed wall length l1 [mm]',12,12,187,14,0,0),
+        (101,0x81,'40',204,10,90,16,tab|0x80,0x200),
+        (10002,0x82,'Deformed wall length l2 (neutral fibre) [mm]',12,36,187,14,0,0),
+        (102,0x81,'30',204,34,90,16,tab|0x80,0x200),
         (104,0x80,'Estimate strain from wall thickness',12,60,250,14,tab|3,0),
-        (10003,0x82,'Wall thickness [mm]',12,84,150,14,0,0),
-        (103,0x81,'2',174,82,95,16,tab|0x80,0x200),
+        (10003,0x82,'Wall thickness [mm]',12,84,187,14,0,0),
+        (103,0x81,'2',204,82,90,16,tab|0x80,0x200),
         (1,0x80,'Calculate',304,10,68,20,tab|1,0),
         (2,0x80,'Close',382,10,72,20,tab,0),
         (10004,0x82,'SOURCE PREVIEW - NX runtime and installation untested',12,110,440,14,0,0),
@@ -148,7 +143,7 @@ def run_dialog(owner=None, open_file=None):
                 except (ValueError,ArithmeticError) as exc:
                     text='Error: '+str(exc)+'\r\nNo result.'
                 else:
-                    text=format_report(result)
+                    text=format_report(result, thickness)
                     try:
                         open_illustrated_report(result, thickness, opener=open_file)
                     except (OSError, NotImplementedError):

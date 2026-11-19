@@ -14,15 +14,18 @@ figure,section{margin:20px 0 0;background:#fff;border:1px solid #d7e2e5;border-r
 .plot{overflow-x:auto}canvas{width:100%;min-width:640px;height:auto;display:block}
 figcaption{display:flex;gap:12px 26px;flex-wrap:wrap;color:#364d59;font-size:.9rem}
 .key{display:inline-block;width:24px;margin-right:8px;border-top:3px solid #03796d;vertical-align:middle}
-.cosine{border-color:#4151aa;border-top-style:dashed}.tangent{border-color:#a45315}
-.sections{display:grid;grid-template-columns:1fr 1fr;gap:16px}.sections section{min-width:0}
-section.primary{grid-column:1/-1}
+.cosine{border-color:#4151aa;border-top-style:dashed}
+details{margin-top:20px}summary{cursor:pointer;width:max-content;padding:8px 13px;border:1px solid #91a9af;border-radius:6px;background:#fff;font-weight:650}
+details section{margin-top:10px}
 table{width:100%;border-collapse:collapse;font-size:.94rem}
 th,td{padding:7px 0;border-bottom:1px solid #e7eef0;text-align:left;vertical-align:top}
 tr:last-child th,tr:last-child td{border-bottom:0}th{padding-right:12px;font-weight:600;width:30%}
-td.value{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right;font-weight:650}
+td.value{font-variant-numeric:tabular-nums;text-align:right;font-weight:650}
 .note{margin-top:10px;font-size:.87rem}.warning{color:#8d3b12;font-weight:650}
-@media(max-width:720px){.sections{display:block}th,td{padding:6px 3px}}
+input{font:inherit;text-align:right;width:7rem;padding:5px;border:1px solid #91a9af;border-radius:4px}
+input[aria-invalid="true"]{border-color:#a12323}
+.low{color:#07665a}.critical{color:#8d3b12}.high{color:#a12323}
+@media(max-width:720px){th,td{padding:6px 3px}th{width:45%}}
 </style>
 </head>
 <body>
@@ -34,85 +37,122 @@ td.value{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right;f
 <figure>
 <h2>Profile and dimensions</h2>
 <div class="plot">
-<canvas id="profile" width="900" height="350" role="img" aria-label="Wrinkle profile with dimensions A, l1, l2, h, R, &phi; and s">
-The dimensions and their definitions are listed in the table.
+<canvas id="profile" width="1000" height="350" role="img" aria-label="Wrinkle profile with dimensions l1, l2, h, R and &phi;">
+The dimension values are listed in the table.
 </canvas>
 </div>
 <figcaption>
 <span><i class="key cosine"></i>Cosine reference with target length l<sub>1</sub></span>
-<span><i class="key"></i>Fitted profile with three arcs and two straight segments</span>
-<span><i class="key tangent"></i>Straight segment s on each side</span>
+<span><i class="key"></i>Fitted profile with three circular arcs</span>
 </figcaption>
 </figure>
-<div class="sections">
-<section class="primary" aria-labelledby="geometry-title">
+<section aria-labelledby="geometry-title">
 <h2 id="geometry-title">What do the dimensions mean?</h2>
 <table aria-labelledby="geometry-title"><tbody id="geometry"></tbody></table>
+<p class="note">l<sub>2</sub> is the horizontal span between the neutral-fibre endpoints in this model.</p>
 </section>
+<section aria-labelledby="strain-title">
+<h2 id="strain-title">Strain and fracture screening</h2>
+<table aria-labelledby="strain-title"><tbody>
+<tr><th scope="row">Wall thickness</th><td class="value" id="wall-thickness"></td></tr>
+<tr><th scope="row"><label for="fracture-elongation">Fracture elongation A</label></th>
+<td class="value"><input id="fracture-elongation" type="text" inputmode="decimal" maxlength="24" aria-describedby="fracture-source" placeholder="e.g. 15.00"> %</td></tr>
+<tr><th scope="row">Calculated outer-fibre strain</th><td class="value" id="outer-strain"></td></tr>
+<tr><th scope="row">Fracture risk screening</th><td class="value" id="fracture-band" aria-live="polite"></td></tr>
+</tbody></table>
+<p class="note" id="fracture-source">Enter the elongation from a tensile test or the applicable value from DIN EN 755-2.</p>
+<p class="note">The estimate is for the outer fibre at the point of maximum cosine curvature. The 70% and 100% bands are screening rules. Actual cracking requires application-specific validation.</p>
+</section>
+<details>
+<summary>More information</summary>
 <section aria-labelledby="deviation-title">
 <h2 id="deviation-title">Length and shape comparison</h2>
 <table aria-labelledby="deviation-title"><tbody id="deviation"></tbody></table>
 <p class="note" id="length-target"></p>
 </section>
-<section aria-labelledby="strain-title">
-<h2 id="strain-title">Radii and strain estimates</h2>
-<table aria-labelledby="strain-title"><tbody id="strain"></tbody></table>
-<p class="note">Simplified t/(2r) estimate. Material approval and crack safety are outside its scope.</p>
-</section>
-</div>
+</details>
 </main>
 <script id="result-data" type="application/json">{{DATA}}</script>
+<script id="screening-rules">
+'use strict';
+function parseFractureElongation(text) {
+  const value = text.trim();
+  if (!/^(?:\d+(?:[.,]\d+)?|[.,]\d+)$/.test(value)) return null;
+  const number = Number(value.replace(',', '.'));
+  return Number.isFinite(number) && number > 0 ? number : null;
+}
+function fractureBand(strain, elongation) {
+  if (!Number.isFinite(strain) || strain < 0 || !Number.isFinite(elongation) || elongation <= 0) return null;
+  if (strain >= elongation) return 'high';
+  if (strain * 10 < elongation * 7) return 'low';
+  return 'critical';
+}
+</script>
 <script>
 'use strict';
 const {l1, l2, thickness, values, fit} = JSON.parse(document.getElementById('result-data').textContent);
-const [amplitude, radius, height, angle, straight] = values;
-const format = new Intl.NumberFormat('en-GB', {maximumFractionDigits: 9, useGrouping: false});
+const [amplitude, radius, height, angle] = values;
+const format = new Intl.NumberFormat('en-GB', {minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false});
+const withUnit = (value, unit) => value === null ? '\u2013' : `${format.format(value)} ${unit}`;
 function table(id, rows) {
   const body = document.getElementById(id);
-  for (const [label, definition, value, unit] of rows) {
+  for (const [label, value, unit] of rows) {
     const row = body.insertRow();
     const header = document.createElement('th');
     header.scope = 'row';
     header.textContent = label;
     row.append(header);
-    if (definition) row.insertCell().textContent = definition;
     const cell = row.insertCell();
     cell.className = 'value';
-    cell.textContent = value === null ? '\u2013' : `${format.format(value)} ${unit}`;
+    cell.textContent = withUnit(value, unit);
   }
 }
 table('geometry', [
-  ['l\u2081 \u00b7 Developed target length', 'Length along the cosine reference from end to end, measured as a 1,000-segment polyline.', l1, 'mm'],
-  ['l\u2082 \u00b7 Projected width', 'Horizontal distance between the profile endpoints.', l2, 'mm'],
-  ['A \u00b7 Cosine amplitude', 'Vertical distance from the cosine midline to its crest. The cosine crest is 2A above the baseline.', amplitude, 'mm'],
-  ['h \u00b7 Fitted profile height', 'Vertical distance from the baseline to the crest of the fitted profile.', height, 'mm'],
-  ['R \u00b7 Arc radius', 'Common radius of the three arcs in the fitted profile.', radius, 'mm'],
-  ['\u03c6 \u00b7 Flank angle', 'Angle between the straight flank and the horizontal.', angle, '\u00b0'],
-  ['s \u00b7 Straight length per side', 'Length of the straight segment between two arcs.', straight, 'mm']
+  ['l\u2081 \u00b7 Undeformed wall length', l1, 'mm'],
+  ['l\u2082 \u00b7 Deformed wall length (neutral fibre)', l2, 'mm'],
+  ['h \u00b7 Fitted profile height', height, 'mm'],
+  ['R \u00b7 Circular arc radius', radius, 'mm'],
+  ['\u03c6 \u00b7 Flank angle', angle, '\u00b0']
 ]);
 table('deviation', [
-  ['Fitted polyline length', '', values[5], 'mm'],
-  ['Analytic fitted length', '', values[6], 'mm'],
-  ['Length deviation from l\u2081', '', values[7], '%'],
-  ['RMS vertical profile deviation', '', values[8], 'mm'],
-  ['Maximum vertical deviation at sample points', '', values[9], 'mm']
+  ['Entered length l\u2081', l1, 'mm'],
+  ['Analytic fitted length', values[6], 'mm'],
+  ['Fitted polyline deviation from l\u2081', values[7], '%'],
+  ['RMS vertical profile deviation', values[8], 'mm'],
+  ['Maximum vertical deviation at sample points', values[9], 'mm']
 ]);
 const target = document.getElementById('length-target');
 const meetsTarget = Math.abs(values[7]) < 0.1;
-target.textContent = meetsTarget ? 'Length deviation is below 0.1%.' : 'Length deviation reaches or exceeds 0.1%.';
+target.textContent = meetsTarget ? 'Length deviation is below 0.10%.' : 'Length deviation reaches or exceeds 0.10%.';
 if (!meetsTarget) target.classList.add('warning');
-table('strain', [
-  ['Optional wall thickness t', '', thickness, 'mm'],
-  ['Cosine radius using the Excel formula', '', values[10], 'mm'],
-  ['Corrected cosine radius', '', values[11], 'mm'],
-  ['Circular arc strain estimate', '', values[12], '%'],
-  ['Cosine strain using the Excel radius', '', values[13], '%'],
-  ['Cosine strain using the corrected radius', '', values[14], '%']
-]);
+const strain = values[13];
+document.getElementById('wall-thickness').textContent = withUnit(thickness, 'mm');
+document.getElementById('outer-strain').textContent = withUnit(strain, '%');
+const elongationInput = document.getElementById('fracture-elongation');
+const assessment = document.getElementById('fracture-band');
+const bandLabels = {
+  low: 'Low (below 70% of fracture elongation)',
+  critical: 'Critical (70% to below 100% of fracture elongation)',
+  high: 'High (at or above fracture elongation)'
+};
+function updateAssessment() {
+  const raw = elongationInput.value.trim();
+  const elongation = parseFractureElongation(raw);
+  const band = fractureBand(strain, elongation);
+  const invalid = raw !== '' && elongation === null;
+  elongationInput.setAttribute('aria-invalid', String(invalid));
+  assessment.className = band ? `value ${band}` : 'value';
+  if (band) assessment.textContent = bandLabels[band];
+  else if (invalid) assessment.textContent = 'Enter a positive percentage.';
+  else if (strain === null) assessment.textContent = 'Wall thickness required.';
+  else assessment.textContent = 'Enter fracture elongation to assess.';
+}
+elongationInput.addEventListener('input', updateAssessment);
+updateAssessment();
 const canvas = document.getElementById('profile');
 const ctx = canvas.getContext('2d');
 const scale = Math.min(650 / l2, 224 / Math.max(height, 2 * amplitude, l2 * .01));
-const left = (900 - l2 * scale) / 2;
+const left = (canvas.width - l2 * scale) / 2;
 const x = distance => left + distance * scale;
 const y = ordinate => 276 - ordinate * scale;
 const ink = '#334d5b', blue = '#4151aa', green = '#03796d', orange = '#a45315';
@@ -142,49 +182,55 @@ const midX = x(l2 / 2), right = x(l2), baseline = y(0);
 line(left, baseline, right, baseline, '#96aab2');
 for (const edge of [left, right]) line(edge, baseline - 4, edge, 312, '#96aab2');
 dimension(left, 306, right, 306);
-label('l\u2082', midX, 330);
+label(`l\u2082 = ${withUnit(l2, 'mm')}`, midX, 330);
 curve(fit, green, []);
 const cosine = Array.from({length: 1001}, (_, i) => amplitude * (1 - Math.cos(2 * Math.PI * i / 1000)));
 curve(cosine, blue, [8, 6]);
 if (radius === null) {
-  label('Flat profile: A = h = 0, l\u2081 = l\u2082', midX, 246);
+  label(`Flat profile, h = ${withUnit(height, 'mm')}`, midX, 243);
+  label(`l\u2081 = ${withUnit(l1, 'mm')}`, midX, 266, blue);
 } else {
-  const topCosine = y(2 * amplitude), topFit = y(height);
-  const halfHeight = y(amplitude), ampX = left - 30, heightX = right + 30;
+  const topFit = y(height), heightX = right + 147;
   const targetX = x(.28 * l2), targetY = y(cosine[280]);
   line(x(.11 * l2), 39, targetX, targetY, blue, [4, 4]);
-  label('l\u2081 along the curve', x(.11 * l2), 31, blue);
+  label(`l\u2081 = ${withUnit(l1, 'mm')}`, x(.11 * l2), 31, blue);
   if (baseline - topFit >= 20) {
     line(midX, topFit, heightX, topFit, '#96aab2', [4, 4]);
     line(right, baseline, heightX, baseline, '#96aab2', [4, 4]);
     dimension(heightX, topFit, heightX, baseline, green);
-    label('h', heightX + 18, (topFit + baseline) / 2 + 6, green);
   }
-  if (halfHeight - topCosine >= 20) {
-    line(ampX, topCosine, midX, topCosine, blue, [4, 4]);
-    line(ampX, halfHeight, midX, halfHeight, blue, [4, 4]);
-    dimension(ampX, topCosine, ampX, halfHeight, blue);
-    label('A', ampX - 16, (topCosine + halfHeight) / 2 + 5, blue);
-  }
-  const phi = angle * Math.PI / 180, xJoin = radius * Math.sin(phi);
+  label(`h = ${withUnit(height, 'mm')}`, heightX - 68, (topFit + baseline) / 2 + 6, green);
+
+  const phi = angle * Math.PI / 180;
+  const xJoin = radius * Math.sin(phi);
   const yJoin = 2 * radius * Math.sin(phi / 2) ** 2;
   const innerJoin = l2 / 2 - xJoin;
   const innerY = yJoin + (innerJoin - xJoin) * Math.tan(phi);
-  if ((innerJoin - xJoin) * scale >= 32 && baseline - topFit >= 24) {
-    line(x(xJoin), y(yJoin), x(innerJoin), y(innerY), orange, [], 4);
-    line(x(l2 - innerJoin), y(innerY), x(l2 - xJoin), y(yJoin), orange, [], 4);
-    label('s', x(l2 - (xJoin + innerJoin) / 2) + 22, y((yJoin + innerY) / 2) + 20, orange);
+  const flankLengthPx = Math.hypot((innerJoin - xJoin) * scale, (innerY - yJoin) * scale);
+  if (flankLengthPx >= 36 && baseline - topFit >= 36) {
     const startX = x(xJoin), startY = y(yJoin);
-    line(startX, startY, startX + 52, startY, orange, [4, 3]);
+    const arcSize = Math.min(37, flankLengthPx * .47);
+    line(startX, startY, startX + arcSize + 18, startY, orange, [4, 3]);
     ctx.beginPath(); ctx.strokeStyle = orange; ctx.lineWidth = 1.3;
-    ctx.arc(startX, startY, 35, -phi, 0); ctx.stroke();
-    label('\u03c6', startX + 56, startY - 7, orange);
+    ctx.arc(startX, startY, arcSize, -phi, 0); ctx.stroke();
+    label(`\u03c6 = ${withUnit(angle, '\u00b0')}`, startX + arcSize + 57, startY - 12, orange);
   }
-  const radiusCenterY = y(height - radius);
-  if (radiusCenterY <= baseline && radiusCenterY - topFit >= 25) {
-    dimension(midX, topFit, midX, radiusCenterY, green);
-    label('R', midX + 18, (topFit + radiusCenterY) / 2 + 6, green);
+
+  function radiusCallout(pointX, pointY, centreX, centreY, labelX, labelY) {
+    const endX = x(pointX), endY = y(pointY), cx = x(centreX), cy = y(centreY);
+    const fits = cy >= 40 && cy <= baseline + 6 && Math.hypot(cx - endX, cy - endY) >= 20;
+    if (fits) dimension(cx, cy, endX, endY, green);
+    const anchorX = fits ? (cx + endX) / 2 : endX;
+    const anchorY = fits ? (cy + endY) / 2 : endY;
+    line(labelX, labelY - 5, anchorX, anchorY, green, [3, 3]);
+    label(`R = ${withUnit(radius, 'mm')}`, labelX, labelY, green);
   }
+  // The end circles are centred above the endpoints. The crest circle is centred below the crest.
+  const arcX = radius * Math.sin(phi / 2);
+  const arcY = 2 * radius * Math.sin(phi / 4) ** 2;
+  radiusCallout(arcX, arcY, 0, radius, left - 68, 232);
+  radiusCallout(l2 / 2, height, l2 / 2, height - radius, midX + 56, Math.min(topFit + 103, 217));
+  radiusCallout(l2 - arcX, arcY, l2, radius, right + 68, 246);
 }
 </script>
 </body>

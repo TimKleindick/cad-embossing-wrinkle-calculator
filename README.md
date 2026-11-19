@@ -11,8 +11,8 @@ report runs offline.
   from a **Directories** macro library. Follow the native input prompts.
 
 Each startup file contains its calculation core and the report template. NX keeps a copy
-of the results in the dialog. CATIA shows three text dialogs if the browser report
-cannot open. Execution inside either CAD host remains unverified, along with
+of the results in the dialog. CATIA shows text results if the browser report cannot
+open. Execution inside either CAD host remains unverified, along with
 installation, native UI imports, VBA compilation, and local licensing.
 
 The calculator reproduces the specified Excel method. It first finds the cosine
@@ -30,28 +30,27 @@ with NX and requires `ctypes`. The CATIA macro requires VBScript and permission 
 macros. The preview accepts lengths from 0.001 to 1,000,000 mm with `l2 <= l1 <= 2*l2`,
 and optional wall thickness from 0 to 1,000,000 mm. These are numerical limits.
 
-| Quantity for l1 = 40 mm and l2 = 30 mm | Approximate result |
+| Quantity for l1 = 40 mm, l2 = 30 mm, and t = 2 mm | Report value |
 |---|---:|
-| Cosine amplitude A, from the midline to the crest | 6.139413268 mm |
-| Radius R of the fitted circular arcs | 5.0322554 mm |
-| Flank angle (phi) | 49.8407463 deg |
-| Fitted profile height h | 12.2342750 mm |
-| Straight segment s per side | 11.3319680 mm |
-| Fitted polyline length | 40.1738373 mm |
-| Analytical length of the fitted profile | 40.1738725 mm |
-| Fitted polyline length deviation from l1 | **+0.434593%** |
-| RMS and maximum vertical shape deviations at the sample points | 0.096220 / 0.181006 mm |
+| Undeformed wall length l1 | 40.00 mm |
+| Deformed wall length l2 (neutral fibre) | 30.00 mm |
+| Radius R of each fitted circular arc | 5.03 mm |
+| Fitted profile height h | 12.23 mm |
+| Flank angle (phi) | 49.84 deg |
+| Calculated outer-fibre strain | 13.47% |
 
-In the reference case, `l1` is the unfolded target length measured along the cosine
-profile, and `l2` is the horizontal distance between its endpoints. The fit exceeds the
-0.1% length deviation target. The reported shape deviations measure vertical distances
-at the 1,001 sample points.
+The calculator uses `l1` as the target length along the cosine. It uses `l2` as the
+horizontal span between the endpoints of the deformed neutral-fibre profile. **More
+information** opens the length and shape comparison. Values in the report are rounded
+to two decimal places.
 
-For 2 mm wall thickness, the simplified strain estimates are 13.46524% using the Excel
-cosine radius, 26.93048% using the corrected cosine radius, and 19.87181% using the
-fitted arc radius. The Excel radius is twice the mathematically correct cosine radius.
-The report identifies each result separately. These `t/(2r)` estimates establish neither
-material approval nor crack resistance.
+Enter fracture elongation A (%) from an applicable tensile test or DIN EN 755-2 in the
+browser report. The screening compares the unrounded calculated outer-fibre strain
+with that input. Below 70% of A is the low band. From 70% up to A is the critical band.
+At or above A is the high band. The screening uses user-defined thresholds. Crack
+formation requires separate validation. Select the material value manually for the
+applicable alloy, temper and product dimensions.
+[DIN EN 755-2:2025](https://www.dinmedia.de/en/standard/din-en-755-2/393018811)
 
 - [NX 2412 startup guide](docs/NX2412.md)
 - [CATIA V5 R32 startup guide](docs/CATIA-V5-R32.md)

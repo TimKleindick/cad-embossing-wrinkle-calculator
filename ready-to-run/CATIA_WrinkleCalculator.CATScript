@@ -216,8 +216,8 @@ Class WrinkleDialogs
             "Simplified t/(2r) estimate. Material approval and crack safety are outside its scope.", _
             vbYesNoCancel+vbQuestion,"Wrinkle Geometry - Source Preview")
     End Function
-    Public Sub ShowResult(ByVal text,ByVal page)
-        MsgBox text,vbOKOnly+vbInformation,"Wrinkle Geometry - Source Preview - " & page & "/3"
+    Public Sub ShowResult(ByVal text)
+        MsgBox text,vbOKOnly+vbInformation,"Wrinkle Geometry - Source Preview"
     End Sub
     Public Function ShowIllustrated(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
         Dim succeeded
@@ -266,7 +266,7 @@ Function WEntryNumber(ByVal value,ByVal unit)
     If IsEmpty(value) Then
         WEntryNumber="Not applicable or not provided"
     Else
-        WEntryNumber=FormatNumber(value,9,-1,0,0) & " " & unit
+        WEntryNumber=FormatNumber(value,2,-1,0,0) & " " & unit
     End If
 End Function
 
@@ -308,39 +308,28 @@ Function WOpenResult(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
     WOpenResult = True
 End Function
 
-Function WrinklePages(ByRef v,ByVal l1,ByVal l2)
-    Dim a,b,c
-    a="SOURCE PREVIEW - CATIA runtime and import untested" & vbCrLf
-    a=a & "Excel method with 1,000 segments and no fitted-length constraint." & vbCrLf
-    a=a & "l1 (developed target length along the cosine): " & l1 & " mm" & vbCrLf
-    a=a & "l2 (projected width between endpoints): " & l2 & " mm" & vbCrLf
-    a=a & "A (cosine amplitude, crest at 2A): " & WEntryNumber(v(0),"mm") & vbCrLf
-    a=a & "R (common radius of the three arcs): " & WEntryNumber(v(1),"mm") & vbCrLf
-    a=a & "Height h: " & WEntryNumber(v(2),"mm") & vbCrLf & "Flank angle: " & WEntryNumber(v(3),"deg") & vbCrLf
-    a=a & "Straight length per side: " & WEntryNumber(v(4),"mm")
-    b="Fitted polyline length: " & WEntryNumber(v(5),"mm") & vbCrLf
-    b=b & "Analytic fitted length: " & WEntryNumber(v(6),"mm") & vbCrLf
-    b=b & "Polyline length deviation: " & WEntryNumber(v(7),"%") & vbCrLf
-    b=b & "RMS vertical profile deviation: " & WEntryNumber(v(8),"mm") & vbCrLf
-    b=b & "Maximum vertical deviation at sample points: " & WEntryNumber(v(9),"mm") & vbCrLf
-    If Abs(v(7))>=0.1 Then b=b & "Length deviation reaches or exceeds 0.1%."
-    c="Cosine radius using the Excel formula: " & WEntryNumber(v(10),"mm") & vbCrLf
-    c=c & "Corrected cosine radius: " & WEntryNumber(v(11),"mm") & vbCrLf
-    c=c & "Circular arc strain estimate: " & WEntryNumber(v(12),"%") & vbCrLf
-    c=c & "Cosine strain using the Excel radius: " & WEntryNumber(v(13),"%") & vbCrLf
-    c=c & "Cosine strain using the corrected radius: " & WEntryNumber(v(14),"%") & vbCrLf
-    c=c & "Simplified t/(2r) estimate. Material approval and crack safety are outside its scope."
-    WrinklePages=Array(a,b,c)
+Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness)
+    Dim report
+    report="SOURCE PREVIEW - CATIA runtime and import untested" & vbCrLf
+    report=report & "Undeformed wall length l1: " & WEntryNumber(l1,"mm") & vbCrLf
+    report=report & "Deformed wall length l2 (neutral fibre): " & WEntryNumber(l2,"mm") & vbCrLf
+    report=report & "Circular arc radius R: " & WEntryNumber(v(1),"mm") & vbCrLf
+    report=report & "Height h: " & WEntryNumber(v(2),"mm") & vbCrLf
+    report=report & "Flank angle: " & WEntryNumber(v(3),"deg") & vbCrLf
+    report=report & "Wall thickness: " & WEntryNumber(thickness,"mm") & vbCrLf
+    report=report & "Calculated outer-fibre strain: " & WEntryNumber(v(13),"%") & vbCrLf
+    report=report & "l2 is the horizontal endpoint span of the neutral fibre." & vbCrLf
+    WResultText=report & "Crack-risk comparison requires the illustrated report."
 End Function
 
 Function WrinkleRunChecked(ByRef ui)
-    Dim raw,l1,l2,thickness,choice,values,pages,i
+    Dim raw,l1,l2,thickness,choice,values
     WrinkleRunChecked=False
-    raw=ui.Ask("Developed target length l1", "40")
+    raw=ui.Ask("Undeformed wall length l1", "40")
     If IsEmpty(raw) Then Exit Function
     If Trim(CStr(raw))="" Then Exit Function
     l1=WParseDecimal(raw)
-    raw=ui.Ask("Projected width l2", "30")
+    raw=ui.Ask("Deformed wall length l2 (neutral fibre, horizontal endpoint span)", "30")
     If IsEmpty(raw) Then Exit Function
     If Trim(CStr(raw))="" Then Exit Function
     l2=WParseDecimal(raw)
@@ -357,10 +346,7 @@ Function WrinkleRunChecked(ByRef ui)
     End If
     values=WrinkleCalculate(l1,l2,thickness)
     If Not ui.ShowIllustrated(values, l1, l2, thickness) Then
-        pages=WrinklePages(values,l1,l2)
-        For i=0 To 2
-            ui.ShowResult pages(i),i+1
-        Next
+        Call ui.ShowResult(WResultText(values, l1, l2, thickness))
     End If
     WrinkleRunChecked=True
 End Function
@@ -405,15 +391,18 @@ Function WResultTemplate()
     html = html & ".plot{overflow-x:auto}canvas{width:100%;min-width:640px;height:auto;display:block}" & vbLf
     html = html & "figcaption{display:flex;gap:12px 26px;flex-wrap:wrap;color:#364d59;font-size:.9rem}" & vbLf
     html = html & ".key{display:inline-block;width:24px;margin-right:8px;border-top:3px solid #03796d;vertical-align:middle}" & vbLf
-    html = html & ".cosine{border-color:#4151aa;border-top-style:dashed}.tangent{border-color:#a45315}" & vbLf
-    html = html & ".sections{display:grid;grid-template-columns:1fr 1fr;gap:16px}.sections section{min-width:0}" & vbLf
-    html = html & "section.primary{grid-column:1/-1}" & vbLf
+    html = html & ".cosine{border-color:#4151aa;border-top-style:dashed}" & vbLf
+    html = html & "details{margin-top:20px}summary{cursor:pointer;width:max-content;padding:8px 13px;border:1px solid #91a9af;border-radius:6px;background:#fff;font-weight:650}" & vbLf
+    html = html & "details section{margin-top:10px}" & vbLf
     html = html & "table{width:100%;border-collapse:collapse;font-size:.94rem}" & vbLf
     html = html & "th,td{padding:7px 0;border-bottom:1px solid #e7eef0;text-align:left;vertical-align:top}" & vbLf
     html = html & "tr:last-child th,tr:last-child td{border-bottom:0}th{padding-right:12px;font-weight:600;width:30%}" & vbLf
-    html = html & "td.value{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right;font-weight:650}" & vbLf
+    html = html & "td.value{font-variant-numeric:tabular-nums;text-align:right;font-weight:650}" & vbLf
     html = html & ".note{margin-top:10px;font-size:.87rem}.warning{color:#8d3b12;font-weight:650}" & vbLf
-    html = html & "@media(max-width:720px){.sections{display:block}th,td{padding:6px 3px}}" & vbLf
+    html = html & "input{font:inherit;text-align:right;width:7rem;padding:5px;border:1px solid #91a9af;border-radius:4px}" & vbLf
+    html = html & "input[aria-invalid=""true""]{border-color:#a12323}" & vbLf
+    html = html & ".low{color:#07665a}.critical{color:#8d3b12}.high{color:#a12323}" & vbLf
+    html = html & "@media(max-width:720px){th,td{padding:6px 3px}th{width:45%}}" & vbLf
     html = html & "</style>" & vbLf
     html = html & "</head>" & vbLf
     html = html & "<body>" & vbLf
@@ -425,85 +414,122 @@ Function WResultTemplate()
     html = html & "<figure>" & vbLf
     html = html & "<h2>Profile and dimensions</h2>" & vbLf
     html = html & "<div class=""plot"">" & vbLf
-    html = html & "<canvas id=""profile"" width=""900"" height=""350"" role=""img"" aria-label=""Wrinkle profile with dimensions A, l1, l2, h, R, &phi; and s"">" & vbLf
-    html = html & "The dimensions and their definitions are listed in the table." & vbLf
+    html = html & "<canvas id=""profile"" width=""1000"" height=""350"" role=""img"" aria-label=""Wrinkle profile with dimensions l1, l2, h, R and &phi;"">" & vbLf
+    html = html & "The dimension values are listed in the table." & vbLf
     html = html & "</canvas>" & vbLf
     html = html & "</div>" & vbLf
     html = html & "<figcaption>" & vbLf
     html = html & "<span><i class=""key cosine""></i>Cosine reference with target length l<sub>1</sub></span>" & vbLf
-    html = html & "<span><i class=""key""></i>Fitted profile with three arcs and two straight segments</span>" & vbLf
-    html = html & "<span><i class=""key tangent""></i>Straight segment s on each side</span>" & vbLf
+    html = html & "<span><i class=""key""></i>Fitted profile with three circular arcs</span>" & vbLf
     html = html & "</figcaption>" & vbLf
     html = html & "</figure>" & vbLf
-    html = html & "<div class=""sections"">" & vbLf
-    html = html & "<section class=""primary"" aria-labelledby=""geometry-title"">" & vbLf
+    html = html & "<section aria-labelledby=""geometry-title"">" & vbLf
     html = html & "<h2 id=""geometry-title"">What do the dimensions mean?</h2>" & vbLf
     html = html & "<table aria-labelledby=""geometry-title""><tbody id=""geometry""></tbody></table>" & vbLf
+    html = html & "<p class=""note"">l<sub>2</sub> is the horizontal span between the neutral-fibre endpoints in this model.</p>" & vbLf
     html = html & "</section>" & vbLf
+    html = html & "<section aria-labelledby=""strain-title"">" & vbLf
+    html = html & "<h2 id=""strain-title"">Strain and fracture screening</h2>" & vbLf
+    html = html & "<table aria-labelledby=""strain-title""><tbody>" & vbLf
+    html = html & "<tr><th scope=""row"">Wall thickness</th><td class=""value"" id=""wall-thickness""></td></tr>" & vbLf
+    html = html & "<tr><th scope=""row""><label for=""fracture-elongation"">Fracture elongation A</label></th>" & vbLf
+    html = html & "<td class=""value""><input id=""fracture-elongation"" type=""text"" inputmode=""decimal"" maxlength=""24"" aria-describedby=""fracture-source"" placeholder=""e.g. 15.00""> %</td></tr>" & vbLf
+    html = html & "<tr><th scope=""row"">Calculated outer-fibre strain</th><td class=""value"" id=""outer-strain""></td></tr>" & vbLf
+    html = html & "<tr><th scope=""row"">Fracture risk screening</th><td class=""value"" id=""fracture-band"" aria-live=""polite""></td></tr>" & vbLf
+    html = html & "</tbody></table>" & vbLf
+    html = html & "<p class=""note"" id=""fracture-source"">Enter the elongation from a tensile test or the applicable value from DIN EN 755-2.</p>" & vbLf
+    html = html & "<p class=""note"">The estimate is for the outer fibre at the point of maximum cosine curvature. The 70% and 100% bands are screening rules. Actual cracking requires application-specific validation.</p>" & vbLf
+    html = html & "</section>" & vbLf
+    html = html & "<details>" & vbLf
+    html = html & "<summary>More information</summary>" & vbLf
     html = html & "<section aria-labelledby=""deviation-title"">" & vbLf
     html = html & "<h2 id=""deviation-title"">Length and shape comparison</h2>" & vbLf
     html = html & "<table aria-labelledby=""deviation-title""><tbody id=""deviation""></tbody></table>" & vbLf
     html = html & "<p class=""note"" id=""length-target""></p>" & vbLf
     html = html & "</section>" & vbLf
-    html = html & "<section aria-labelledby=""strain-title"">" & vbLf
-    html = html & "<h2 id=""strain-title"">Radii and strain estimates</h2>" & vbLf
-    html = html & "<table aria-labelledby=""strain-title""><tbody id=""strain""></tbody></table>" & vbLf
-    html = html & "<p class=""note"">Simplified t/(2r) estimate. Material approval and crack safety are outside its scope.</p>" & vbLf
-    html = html & "</section>" & vbLf
-    html = html & "</div>" & vbLf
+    html = html & "</details>" & vbLf
     html = html & "</main>" & vbLf
     html = html & "<script id=""result-data"" type=""application/json"">{{DATA}}</script>" & vbLf
+    html = html & "<script id=""screening-rules"">" & vbLf
+    html = html & "'use strict';" & vbLf
+    html = html & "function parseFractureElongation(text) {" & vbLf
+    html = html & "  const value = text.trim();" & vbLf
+    html = html & "  if (!/^(?:\d+(?:[.,]\d+)?|[.,]\d+)$/.test(value)) return null;" & vbLf
+    html = html & "  const number = Number(value.replace(',', '.'));" & vbLf
+    html = html & "  return Number.isFinite(number) && number > 0 ? number : null;" & vbLf
+    html = html & "}" & vbLf
+    html = html & "function fractureBand(strain, elongation) {" & vbLf
+    html = html & "  if (!Number.isFinite(strain) || strain < 0 || !Number.isFinite(elongation) || elongation <= 0) return null;" & vbLf
+    html = html & "  if (strain >= elongation) return 'high';" & vbLf
+    html = html & "  if (strain * 10 < elongation * 7) return 'low';" & vbLf
+    html = html & "  return 'critical';" & vbLf
+    html = html & "}" & vbLf
+    html = html & "</script>" & vbLf
     html = html & "<script>" & vbLf
     html = html & "'use strict';" & vbLf
     html = html & "const {l1, l2, thickness, values, fit} = JSON.parse(document.getElementById('result-data').textContent);" & vbLf
-    html = html & "const [amplitude, radius, height, angle, straight] = values;" & vbLf
-    html = html & "const format = new Intl.NumberFormat('en-GB', {maximumFractionDigits: 9, useGrouping: false});" & vbLf
+    html = html & "const [amplitude, radius, height, angle] = values;" & vbLf
+    html = html & "const format = new Intl.NumberFormat('en-GB', {minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false});" & vbLf
+    html = html & "const withUnit = (value, unit) => value === null ? '\u2013' : `${format.format(value)} ${unit}`;" & vbLf
     html = html & "function table(id, rows) {" & vbLf
     html = html & "  const body = document.getElementById(id);" & vbLf
-    html = html & "  for (const [label, definition, value, unit] of rows) {" & vbLf
+    html = html & "  for (const [label, value, unit] of rows) {" & vbLf
     html = html & "    const row = body.insertRow();" & vbLf
     html = html & "    const header = document.createElement('th');" & vbLf
     html = html & "    header.scope = 'row';" & vbLf
     html = html & "    header.textContent = label;" & vbLf
     html = html & "    row.append(header);" & vbLf
-    html = html & "    if (definition) row.insertCell().textContent = definition;" & vbLf
     html = html & "    const cell = row.insertCell();" & vbLf
     html = html & "    cell.className = 'value';" & vbLf
-    html = html & "    cell.textContent = value === null ? '\u2013' : `${format.format(value)} ${unit}`;" & vbLf
+    html = html & "    cell.textContent = withUnit(value, unit);" & vbLf
     html = html & "  }" & vbLf
     html = html & "}" & vbLf
     html = html & "table('geometry', [" & vbLf
-    html = html & "  ['l\u2081 \u00b7 Developed target length', 'Length along the cosine reference from end to end, measured as a 1,000-segment polyline.', l1, 'mm']," & vbLf
-    html = html & "  ['l\u2082 \u00b7 Projected width', 'Horizontal distance between the profile endpoints.', l2, 'mm']," & vbLf
-    html = html & "  ['A \u00b7 Cosine amplitude', 'Vertical distance from the cosine midline to its crest. The cosine crest is 2A above the baseline.', amplitude, 'mm']," & vbLf
-    html = html & "  ['h \u00b7 Fitted profile height', 'Vertical distance from the baseline to the crest of the fitted profile.', height, 'mm']," & vbLf
-    html = html & "  ['R \u00b7 Arc radius', 'Common radius of the three arcs in the fitted profile.', radius, 'mm']," & vbLf
-    html = html & "  ['\u03c6 \u00b7 Flank angle', 'Angle between the straight flank and the horizontal.', angle, '\u00b0']," & vbLf
-    html = html & "  ['s \u00b7 Straight length per side', 'Length of the straight segment between two arcs.', straight, 'mm']" & vbLf
+    html = html & "  ['l\u2081 \u00b7 Undeformed wall length', l1, 'mm']," & vbLf
+    html = html & "  ['l\u2082 \u00b7 Deformed wall length (neutral fibre)', l2, 'mm']," & vbLf
+    html = html & "  ['h \u00b7 Fitted profile height', height, 'mm']," & vbLf
+    html = html & "  ['R \u00b7 Circular arc radius', radius, 'mm']," & vbLf
+    html = html & "  ['\u03c6 \u00b7 Flank angle', angle, '\u00b0']" & vbLf
     html = html & "]);" & vbLf
     html = html & "table('deviation', [" & vbLf
-    html = html & "  ['Fitted polyline length', '', values[5], 'mm']," & vbLf
-    html = html & "  ['Analytic fitted length', '', values[6], 'mm']," & vbLf
-    html = html & "  ['Length deviation from l\u2081', '', values[7], '%']," & vbLf
-    html = html & "  ['RMS vertical profile deviation', '', values[8], 'mm']," & vbLf
-    html = html & "  ['Maximum vertical deviation at sample points', '', values[9], 'mm']" & vbLf
+    html = html & "  ['Entered length l\u2081', l1, 'mm']," & vbLf
+    html = html & "  ['Analytic fitted length', values[6], 'mm']," & vbLf
+    html = html & "  ['Fitted polyline deviation from l\u2081', values[7], '%']," & vbLf
+    html = html & "  ['RMS vertical profile deviation', values[8], 'mm']," & vbLf
+    html = html & "  ['Maximum vertical deviation at sample points', values[9], 'mm']" & vbLf
     html = html & "]);" & vbLf
     html = html & "const target = document.getElementById('length-target');" & vbLf
     html = html & "const meetsTarget = Math.abs(values[7]) < 0.1;" & vbLf
-    html = html & "target.textContent = meetsTarget ? 'Length deviation is below 0.1%.' : 'Length deviation reaches or exceeds 0.1%.';" & vbLf
+    html = html & "target.textContent = meetsTarget ? 'Length deviation is below 0.10%.' : 'Length deviation reaches or exceeds 0.10%.';" & vbLf
     html = html & "if (!meetsTarget) target.classList.add('warning');" & vbLf
-    html = html & "table('strain', [" & vbLf
-    html = html & "  ['Optional wall thickness t', '', thickness, 'mm']," & vbLf
-    html = html & "  ['Cosine radius using the Excel formula', '', values[10], 'mm']," & vbLf
-    html = html & "  ['Corrected cosine radius', '', values[11], 'mm']," & vbLf
-    html = html & "  ['Circular arc strain estimate', '', values[12], '%']," & vbLf
-    html = html & "  ['Cosine strain using the Excel radius', '', values[13], '%']," & vbLf
-    html = html & "  ['Cosine strain using the corrected radius', '', values[14], '%']" & vbLf
-    html = html & "]);" & vbLf
+    html = html & "const strain = values[13];" & vbLf
+    html = html & "document.getElementById('wall-thickness').textContent = withUnit(thickness, 'mm');" & vbLf
+    html = html & "document.getElementById('outer-strain').textContent = withUnit(strain, '%');" & vbLf
+    html = html & "const elongationInput = document.getElementById('fracture-elongation');" & vbLf
+    html = html & "const assessment = document.getElementById('fracture-band');" & vbLf
+    html = html & "const bandLabels = {" & vbLf
+    html = html & "  low: 'Low (below 70% of fracture elongation)'," & vbLf
+    html = html & "  critical: 'Critical (70% to below 100% of fracture elongation)'," & vbLf
+    html = html & "  high: 'High (at or above fracture elongation)'" & vbLf
+    html = html & "};" & vbLf
+    html = html & "function updateAssessment() {" & vbLf
+    html = html & "  const raw = elongationInput.value.trim();" & vbLf
+    html = html & "  const elongation = parseFractureElongation(raw);" & vbLf
+    html = html & "  const band = fractureBand(strain, elongation);" & vbLf
+    html = html & "  const invalid = raw !== '' && elongation === null;" & vbLf
+    html = html & "  elongationInput.setAttribute('aria-invalid', String(invalid));" & vbLf
+    html = html & "  assessment.className = band ? `value ${band}` : 'value';" & vbLf
+    html = html & "  if (band) assessment.textContent = bandLabels[band];" & vbLf
+    html = html & "  else if (invalid) assessment.textContent = 'Enter a positive percentage.';" & vbLf
+    html = html & "  else if (strain === null) assessment.textContent = 'Wall thickness required.';" & vbLf
+    html = html & "  else assessment.textContent = 'Enter fracture elongation to assess.';" & vbLf
+    html = html & "}" & vbLf
+    html = html & "elongationInput.addEventListener('input', updateAssessment);" & vbLf
+    html = html & "updateAssessment();" & vbLf
     html = html & "const canvas = document.getElementById('profile');" & vbLf
     html = html & "const ctx = canvas.getContext('2d');" & vbLf
     html = html & "const scale = Math.min(650 / l2, 224 / Math.max(height, 2 * amplitude, l2 * .01));" & vbLf
-    html = html & "const left = (900 - l2 * scale) / 2;" & vbLf
+    html = html & "const left = (canvas.width - l2 * scale) / 2;" & vbLf
     html = html & "const x = distance => left + distance * scale;" & vbLf
     html = html & "const y = ordinate => 276 - ordinate * scale;" & vbLf
     html = html & "const ink = '#334d5b', blue = '#4151aa', green = '#03796d', orange = '#a45315';" & vbLf
@@ -533,49 +559,55 @@ Function WResultTemplate()
     html = html & "line(left, baseline, right, baseline, '#96aab2');" & vbLf
     html = html & "for (const edge of [left, right]) line(edge, baseline - 4, edge, 312, '#96aab2');" & vbLf
     html = html & "dimension(left, 306, right, 306);" & vbLf
-    html = html & "label('l\u2082', midX, 330);" & vbLf
+    html = html & "label(`l\u2082 = ${withUnit(l2, 'mm')}`, midX, 330);" & vbLf
     html = html & "curve(fit, green, []);" & vbLf
     html = html & "const cosine = Array.from({length: 1001}, (_, i) => amplitude * (1 - Math.cos(2 * Math.PI * i / 1000)));" & vbLf
     html = html & "curve(cosine, blue, [8, 6]);" & vbLf
     html = html & "if (radius === null) {" & vbLf
-    html = html & "  label('Flat profile: A = h = 0, l\u2081 = l\u2082', midX, 246);" & vbLf
+    html = html & "  label(`Flat profile, h = ${withUnit(height, 'mm')}`, midX, 243);" & vbLf
+    html = html & "  label(`l\u2081 = ${withUnit(l1, 'mm')}`, midX, 266, blue);" & vbLf
     html = html & "} else {" & vbLf
-    html = html & "  const topCosine = y(2 * amplitude), topFit = y(height);" & vbLf
-    html = html & "  const halfHeight = y(amplitude), ampX = left - 30, heightX = right + 30;" & vbLf
+    html = html & "  const topFit = y(height), heightX = right + 147;" & vbLf
     html = html & "  const targetX = x(.28 * l2), targetY = y(cosine[280]);" & vbLf
     html = html & "  line(x(.11 * l2), 39, targetX, targetY, blue, [4, 4]);" & vbLf
-    html = html & "  label('l\u2081 along the curve', x(.11 * l2), 31, blue);" & vbLf
+    html = html & "  label(`l\u2081 = ${withUnit(l1, 'mm')}`, x(.11 * l2), 31, blue);" & vbLf
     html = html & "  if (baseline - topFit >= 20) {" & vbLf
     html = html & "    line(midX, topFit, heightX, topFit, '#96aab2', [4, 4]);" & vbLf
     html = html & "    line(right, baseline, heightX, baseline, '#96aab2', [4, 4]);" & vbLf
     html = html & "    dimension(heightX, topFit, heightX, baseline, green);" & vbLf
-    html = html & "    label('h', heightX + 18, (topFit + baseline) / 2 + 6, green);" & vbLf
     html = html & "  }" & vbLf
-    html = html & "  if (halfHeight - topCosine >= 20) {" & vbLf
-    html = html & "    line(ampX, topCosine, midX, topCosine, blue, [4, 4]);" & vbLf
-    html = html & "    line(ampX, halfHeight, midX, halfHeight, blue, [4, 4]);" & vbLf
-    html = html & "    dimension(ampX, topCosine, ampX, halfHeight, blue);" & vbLf
-    html = html & "    label('A', ampX - 16, (topCosine + halfHeight) / 2 + 5, blue);" & vbLf
-    html = html & "  }" & vbLf
-    html = html & "  const phi = angle * Math.PI / 180, xJoin = radius * Math.sin(phi);" & vbLf
+    html = html & "  label(`h = ${withUnit(height, 'mm')}`, heightX - 68, (topFit + baseline) / 2 + 6, green);" & vbLf
+    html = html & "" & vbLf
+    html = html & "  const phi = angle * Math.PI / 180;" & vbLf
+    html = html & "  const xJoin = radius * Math.sin(phi);" & vbLf
     html = html & "  const yJoin = 2 * radius * Math.sin(phi / 2) ** 2;" & vbLf
     html = html & "  const innerJoin = l2 / 2 - xJoin;" & vbLf
     html = html & "  const innerY = yJoin + (innerJoin - xJoin) * Math.tan(phi);" & vbLf
-    html = html & "  if ((innerJoin - xJoin) * scale >= 32 && baseline - topFit >= 24) {" & vbLf
-    html = html & "    line(x(xJoin), y(yJoin), x(innerJoin), y(innerY), orange, [], 4);" & vbLf
-    html = html & "    line(x(l2 - innerJoin), y(innerY), x(l2 - xJoin), y(yJoin), orange, [], 4);" & vbLf
-    html = html & "    label('s', x(l2 - (xJoin + innerJoin) / 2) + 22, y((yJoin + innerY) / 2) + 20, orange);" & vbLf
+    html = html & "  const flankLengthPx = Math.hypot((innerJoin - xJoin) * scale, (innerY - yJoin) * scale);" & vbLf
+    html = html & "  if (flankLengthPx >= 36 && baseline - topFit >= 36) {" & vbLf
     html = html & "    const startX = x(xJoin), startY = y(yJoin);" & vbLf
-    html = html & "    line(startX, startY, startX + 52, startY, orange, [4, 3]);" & vbLf
+    html = html & "    const arcSize = Math.min(37, flankLengthPx * .47);" & vbLf
+    html = html & "    line(startX, startY, startX + arcSize + 18, startY, orange, [4, 3]);" & vbLf
     html = html & "    ctx.beginPath(); ctx.strokeStyle = orange; ctx.lineWidth = 1.3;" & vbLf
-    html = html & "    ctx.arc(startX, startY, 35, -phi, 0); ctx.stroke();" & vbLf
-    html = html & "    label('\u03c6', startX + 56, startY - 7, orange);" & vbLf
+    html = html & "    ctx.arc(startX, startY, arcSize, -phi, 0); ctx.stroke();" & vbLf
+    html = html & "    label(`\u03c6 = ${withUnit(angle, '\u00b0')}`, startX + arcSize + 57, startY - 12, orange);" & vbLf
     html = html & "  }" & vbLf
-    html = html & "  const radiusCenterY = y(height - radius);" & vbLf
-    html = html & "  if (radiusCenterY <= baseline && radiusCenterY - topFit >= 25) {" & vbLf
-    html = html & "    dimension(midX, topFit, midX, radiusCenterY, green);" & vbLf
-    html = html & "    label('R', midX + 18, (topFit + radiusCenterY) / 2 + 6, green);" & vbLf
+    html = html & "" & vbLf
+    html = html & "  function radiusCallout(pointX, pointY, centreX, centreY, labelX, labelY) {" & vbLf
+    html = html & "    const endX = x(pointX), endY = y(pointY), cx = x(centreX), cy = y(centreY);" & vbLf
+    html = html & "    const fits = cy >= 40 && cy <= baseline + 6 && Math.hypot(cx - endX, cy - endY) >= 20;" & vbLf
+    html = html & "    if (fits) dimension(cx, cy, endX, endY, green);" & vbLf
+    html = html & "    const anchorX = fits ? (cx + endX) / 2 : endX;" & vbLf
+    html = html & "    const anchorY = fits ? (cy + endY) / 2 : endY;" & vbLf
+    html = html & "    line(labelX, labelY - 5, anchorX, anchorY, green, [3, 3]);" & vbLf
+    html = html & "    label(`R = ${withUnit(radius, 'mm')}`, labelX, labelY, green);" & vbLf
     html = html & "  }" & vbLf
+    html = html & "  // The end circles are centred above the endpoints. The crest circle is centred below the crest." & vbLf
+    html = html & "  const arcX = radius * Math.sin(phi / 2);" & vbLf
+    html = html & "  const arcY = 2 * radius * Math.sin(phi / 4) ** 2;" & vbLf
+    html = html & "  radiusCallout(arcX, arcY, 0, radius, left - 68, 232);" & vbLf
+    html = html & "  radiusCallout(l2 / 2, height, l2 / 2, height - radius, midX + 56, Math.min(topFit + 103, 217));" & vbLf
+    html = html & "  radiusCallout(l2 - arcX, arcY, l2, radius, right + 68, 246);" & vbLf
     html = html & "}" & vbLf
     html = html & "</script>" & vbLf
     html = html & "</body>" & vbLf
