@@ -43,6 +43,15 @@ class EntryTests(unittest.TestCase):
             self.assertAlmostEqual(r['amplitude_mm'],6.139413271,delta=1e-7)
             self.assertGreater(r['length_error_pct'],.4)
 
+    def test_catscript_emits_option_explicit_before_any_statement(self):
+        from tools.build_entries import generated_sources
+
+        path = 'ready-to-run/CATIA_WrinkleCalculator.CATScript'
+        source = generated_sources(ROOT)[path].decode('ascii')
+        self.assertEqual(source.splitlines()[0], 'Option Explicit')
+        self.assertNotRegex(source, r'(?im)^\s*Language\s*=')
+        self.assertEqual((ROOT / path).read_bytes(), source.encode('ascii'))
+
     def test_generation_check_rejects_stale_delivery(self):
         from tools.build_entries import generated_sources,check_generated
         expected=generated_sources(ROOT)

@@ -82,3 +82,12 @@ Completed: main created from verified49c9568 without losing source/history; curr
 Audit evidence:5initialcommits/39trees/63blobs/43paths independently examined; all5pre-transitionActions runs and17logs scanned,0artifacts/optionalstoredsurfaces. One personal author/committer email is present in all5initialcommits and historical Actions run metadata. New commits use the account's noreply identity. The owner's disclosure choice is pending; no history rewrite, force-push, deletion or public visibility action executed. This is the remaining blocker, not an automatic approval rejection.
 
 Roles: independent publication audit (/root/publication_review); primary handled remote review, docs, commits and API setting. Separate commit agent skipped for serialized Git ownership. Complexity hard; current GPT-6/high. Raw audit data stays outside Git. Recheck future logs/current remote state before any later authorized visibility change.
+
+# CATScript startup directive
+
+Scope: targeted CATIA startup bug fix. GPT-6.2-sol, direct execution for a small change. Keep the existing calculation and generated-file check. Compile the delivered header in Windows CI.
+
+- [x] Locate the reported directive and compare the generator with the Windows test harness and Dassault's V5 rules.
+- [x] Observe the regression test failure, fix and regenerate the entry, and run local verification.
+
+Review: the regression failed on the old first line and all 22 tests passed after regeneration. The Windows runner now compiles the original delivered file before the behavior tests. A rerun inside CATIA V5 R32 is the remaining host check. The primary agent handled the targeted fix, documentation and Git work.

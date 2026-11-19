@@ -9,3 +9,5 @@
 - **Delivering a CAD entry as one file -> generate it from the tested unchanged kernel and UI adapter -> check freshness in CI and execute the copied file from an otherwise empty directory.** This catches hidden source-tree/import dependencies without pretending to test the CAD host.
 
 - **Changing repository visibility -> inspect historical author/committer metadata and all Actions logs as well as source files -> keep visibility private until any personal-data disclosure decision is explicit; a force-push alone does not prove cached GitHub objects were purged.**
+
+- **Test startup directives on the delivered script.** Compile the exact `.CATScript` before the test harness appends code, so it cannot hide a malformed preamble.
