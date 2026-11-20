@@ -124,3 +124,15 @@ Standard change using GPT-6.2-sol. Preserve the two calculation cores, numeric r
 - [x] Exercise browser interaction and inspect the reference sketch.
 
 Review: 25 local tests passed. Browser checks covered the reference values, the disclosure and all three bands, decimal comma, invalid input, and a flat profile without thickness. The standalone files share one template, and both solver cores and numeric reference data are unchanged. GitHub Actions records the platform checks for this revision. CAD host launch remains a workstation check.
+
+# Curved cosine dimension and coloured fitted flanks
+
+Trivial display change using GPT-6.2-sol with direct implementation. The shared sketch will show an offset cosine dimension with endpoint arrows and will distinguish the fitted straight segments from the circular arcs. The horizontal length dimension, numeric payloads and screening stay the same.
+
+- [x] Reproduce the missing curved dimension and separate flank strokes in a sketch regression.
+- [x] Update the shared sketch and regenerate both standalone launchers.
+- [x] Inspect the reference and edge-case renders and check the numeric results against the previous version.
+
+## Review
+
+The new sketch test failed against the prior report and passed after the change. All 26 tests pass. Both regenerated launchers pass the freshness check and Python sources compile. Headless Chrome rendered the 40/30, 30/30, 60/30 and almost flat 30.003/30 cases. The numerical results, report payloads and screening sections match the previous revision for all four cases. This small change used direct implementation without subagents. Only the shared sketch, generated launchers, tests and task notes changed. GitHub Actions records platform checks. Execution inside either CAD host still requires workstation validation.

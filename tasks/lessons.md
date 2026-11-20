@@ -12,7 +12,7 @@
 
 - **Test startup directives on the delivered script.** Compile the exact `.CATScript` before the test harness appends code, so it cannot hide a malformed preamble.
 
-- **For dimensioned profiles, plot both axes at the same scale and verify which curve owns each measure.** Plot representative and flat cases, and keep display sampling separate from the solver's length calculation.
+- **For dimensioned profiles, plot both axes at the same scale and verify which curve owns each measure.** Plot representative and flat cases, and keep display sampling separate from the solver's length calculation. Where line colours change across tangent joins, use the exact contact points so sampled segments meet at the same coordinates.
 
 - **When two launchers show the same report, embed one template in both delivered files.** Verify the template and numerical payload from the standalone launchers so their labels and units stay in sync.
 

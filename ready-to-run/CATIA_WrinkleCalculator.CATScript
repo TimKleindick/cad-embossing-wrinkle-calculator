@@ -392,6 +392,7 @@ Function WResultTemplate()
     html = html & "figcaption{display:flex;gap:12px 26px;flex-wrap:wrap;color:#364d59;font-size:.9rem}" & vbLf
     html = html & ".key{display:inline-block;width:24px;margin-right:8px;border-top:3px solid #03796d;vertical-align:middle}" & vbLf
     html = html & ".cosine{border-color:#4151aa;border-top-style:dashed}" & vbLf
+    html = html & ".straight{border-color:#a13355}" & vbLf
     html = html & "details{margin-top:20px}summary{cursor:pointer;width:max-content;padding:8px 13px;border:1px solid #91a9af;border-radius:6px;background:#fff;font-weight:650}" & vbLf
     html = html & "details section{margin-top:10px}" & vbLf
     html = html & "table{width:100%;border-collapse:collapse;font-size:.94rem}" & vbLf
@@ -420,7 +421,8 @@ Function WResultTemplate()
     html = html & "</div>" & vbLf
     html = html & "<figcaption>" & vbLf
     html = html & "<span><i class=""key cosine""></i>Cosine reference with target length l<sub>1</sub></span>" & vbLf
-    html = html & "<span><i class=""key""></i>Fitted profile with three circular arcs</span>" & vbLf
+    html = html & "<span id=""arc-key""><i class=""key""></i>Fitted circular arcs</span>" & vbLf
+    html = html & "<span><i class=""key straight""></i>Fitted straight segments</span>" & vbLf
     html = html & "</figcaption>" & vbLf
     html = html & "</figure>" & vbLf
     html = html & "<section aria-labelledby=""geometry-title"">" & vbLf
@@ -533,6 +535,7 @@ Function WResultTemplate()
     html = html & "const x = distance => left + distance * scale;" & vbLf
     html = html & "const y = ordinate => 276 - ordinate * scale;" & vbLf
     html = html & "const ink = '#334d5b', blue = '#4151aa', green = '#03796d', orange = '#a45315';" & vbLf
+    html = html & "const straight = '#a13355';" & vbLf
     html = html & "function line(x1, y1, x2, y2, color = ink, dash = [], width = 1.3) {" & vbLf
     html = html & "  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash);" & vbLf
     html = html & "  ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]);" & vbLf
@@ -541,36 +544,54 @@ Function WResultTemplate()
     html = html & "  ctx.font = '600 17px system-ui'; ctx.fillStyle = color; ctx.textAlign = 'center';" & vbLf
     html = html & "  ctx.lineWidth = 5; ctx.strokeStyle = '#fff'; ctx.strokeText(text, px, py); ctx.fillText(text, px, py);" & vbLf
     html = html & "}" & vbLf
+    html = html & "function arrowhead(px, py, alpha, sign, color) {" & vbLf
+    html = html & "  for (const delta of [-.48, .48]) {" & vbLf
+    html = html & "    line(px, py, px + sign * 8 * Math.cos(alpha + delta), py + sign * 8 * Math.sin(alpha + delta), color);" & vbLf
+    html = html & "  }" & vbLf
+    html = html & "}" & vbLf
     html = html & "function dimension(x1, y1, x2, y2, color = ink) {" & vbLf
     html = html & "  line(x1, y1, x2, y2, color);" & vbLf
     html = html & "  const alpha = Math.atan2(y2 - y1, x2 - x1);" & vbLf
-    html = html & "  for (const [px, py, sign] of [[x1, y1, 1], [x2, y2, -1]]) {" & vbLf
-    html = html & "    for (const delta of [-.48, .48]) {" & vbLf
-    html = html & "      line(px, py, px + sign * 8 * Math.cos(alpha + delta), py + sign * 8 * Math.sin(alpha + delta), color);" & vbLf
-    html = html & "    }" & vbLf
-    html = html & "  }" & vbLf
+    html = html & "  arrowhead(x1, y1, alpha, 1, color);" & vbLf
+    html = html & "  arrowhead(x2, y2, alpha, -1, color);" & vbLf
     html = html & "}" & vbLf
-    html = html & "function curve(points, color, dash) {" & vbLf
-    html = html & "  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.setLineDash(dash);" & vbLf
-    html = html & "  points.forEach((v, i) => ctx.lineTo(x(l2 * i / (points.length - 1)), y(v)));" & vbLf
+    html = html & "function curve(points, color, dash = [], width = 3.5) {" & vbLf
+    html = html & "  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash);" & vbLf
+    html = html & "  ctx.moveTo(...points[0]);" & vbLf
+    html = html & "  for (const point of points.slice(1)) ctx.lineTo(...point);" & vbLf
     html = html & "  ctx.stroke(); ctx.setLineDash([]);" & vbLf
     html = html & "}" & vbLf
     html = html & "const midX = x(l2 / 2), right = x(l2), baseline = y(0);" & vbLf
+    html = html & "const cosine = Array.from({length: 1001}, (_, i) => [" & vbLf
+    html = html & "  x(l2 * i / 1000), y(amplitude * (1 - Math.cos(2 * Math.PI * i / 1000)))" & vbLf
+    html = html & "]);" & vbLf
     html = html & "line(left, baseline, right, baseline, '#96aab2');" & vbLf
     html = html & "for (const edge of [left, right]) line(edge, baseline - 4, edge, 312, '#96aab2');" & vbLf
     html = html & "dimension(left, 306, right, 306);" & vbLf
     html = html & "label(`l\u2082 = ${withUnit(l2, 'mm')}`, midX, 330);" & vbLf
-    html = html & "curve(fit, green, []);" & vbLf
-    html = html & "const cosine = Array.from({length: 1001}, (_, i) => amplitude * (1 - Math.cos(2 * Math.PI * i / 1000)));" & vbLf
-    html = html & "curve(cosine, blue, [8, 6]);" & vbLf
     html = html & "if (radius === null) {" & vbLf
-    html = html & "  label(`Flat profile, h = ${withUnit(height, 'mm')}`, midX, 243);" & vbLf
-    html = html & "  label(`l\u2081 = ${withUnit(l1, 'mm')}`, midX, 266, blue);" & vbLf
+    html = html & "  document.getElementById('arc-key').hidden = true;" & vbLf
+    html = html & "  curve([[left, baseline], [right, baseline]], straight);" & vbLf
+    html = html & "  curve(cosine, blue, [8, 6], 2.4);" & vbLf
+    html = html & "  label(`Flat profile, h = ${withUnit(height, 'mm')}`, midX, 209);" & vbLf
     html = html & "} else {" & vbLf
     html = html & "  const topFit = y(height), heightX = right + 147;" & vbLf
-    html = html & "  const targetX = x(.28 * l2), targetY = y(cosine[280]);" & vbLf
-    html = html & "  line(x(.11 * l2), 39, targetX, targetY, blue, [4, 4]);" & vbLf
-    html = html & "  label(`l\u2081 = ${withUnit(l1, 'mm')}`, x(.11 * l2), 31, blue);" & vbLf
+    html = html & "  const phi = angle * Math.PI / 180;" & vbLf
+    html = html & "  const xJoin = radius * Math.sin(phi);" & vbLf
+    html = html & "  const yJoin = 2 * radius * Math.sin(phi / 2) ** 2;" & vbLf
+    html = html & "  const innerJoin = l2 / 2 - xJoin;" & vbLf
+    html = html & "  const innerY = yJoin + (innerJoin - xJoin) * Math.tan(phi);" & vbLf
+    html = html & "  const leftOuter = [x(xJoin), y(yJoin)], leftInner = [x(innerJoin), y(innerY)];" & vbLf
+    html = html & "  const rightInner = [x(l2 - innerJoin), y(innerY)], rightOuter = [x(l2 - xJoin), y(yJoin)];" & vbLf
+    html = html & "  const fitted = fit.map((v, i) => [x(l2 * i / (fit.length - 1)), y(v)]);" & vbLf
+    html = html & "  // Use the exact tangent contacts for the colour changes between arcs and straight segments." & vbLf
+    html = html & "  curve([...fitted.filter(([px]) => px < leftOuter[0]), leftOuter], green);" & vbLf
+    html = html & "  curve([leftOuter, leftInner], straight);" & vbLf
+    html = html & "  curve([leftInner, ...fitted.filter(([px]) => px > leftInner[0] && px < rightInner[0]), rightInner], green);" & vbLf
+    html = html & "  curve([rightInner, rightOuter], straight);" & vbLf
+    html = html & "  curve([rightOuter, ...fitted.filter(([px]) => px > rightOuter[0])], green);" & vbLf
+    html = html & "  curve(cosine, blue, [8, 6], 2.4);" & vbLf
+    html = html & "" & vbLf
     html = html & "  if (baseline - topFit >= 20) {" & vbLf
     html = html & "    line(midX, topFit, heightX, topFit, '#96aab2', [4, 4]);" & vbLf
     html = html & "    line(right, baseline, heightX, baseline, '#96aab2', [4, 4]);" & vbLf
@@ -578,14 +599,9 @@ Function WResultTemplate()
     html = html & "  }" & vbLf
     html = html & "  label(`h = ${withUnit(height, 'mm')}`, heightX - 68, (topFit + baseline) / 2 + 6, green);" & vbLf
     html = html & "" & vbLf
-    html = html & "  const phi = angle * Math.PI / 180;" & vbLf
-    html = html & "  const xJoin = radius * Math.sin(phi);" & vbLf
-    html = html & "  const yJoin = 2 * radius * Math.sin(phi / 2) ** 2;" & vbLf
-    html = html & "  const innerJoin = l2 / 2 - xJoin;" & vbLf
-    html = html & "  const innerY = yJoin + (innerJoin - xJoin) * Math.tan(phi);" & vbLf
     html = html & "  const flankLengthPx = Math.hypot((innerJoin - xJoin) * scale, (innerY - yJoin) * scale);" & vbLf
     html = html & "  if (flankLengthPx >= 36 && baseline - topFit >= 36) {" & vbLf
-    html = html & "    const startX = x(xJoin), startY = y(yJoin);" & vbLf
+    html = html & "    const [startX, startY] = leftOuter;" & vbLf
     html = html & "    const arcSize = Math.min(37, flankLengthPx * .47);" & vbLf
     html = html & "    line(startX, startY, startX + arcSize + 18, startY, orange, [4, 3]);" & vbLf
     html = html & "    ctx.beginPath(); ctx.strokeStyle = orange; ctx.lineWidth = 1.3;" & vbLf
@@ -605,10 +621,18 @@ Function WResultTemplate()
     html = html & "  // The end circles are centred above the endpoints. The crest circle is centred below the crest." & vbLf
     html = html & "  const arcX = radius * Math.sin(phi / 2);" & vbLf
     html = html & "  const arcY = 2 * radius * Math.sin(phi / 4) ** 2;" & vbLf
+    html = html & "  const crownLabelShift = Math.max(0, Math.min(56, (right - left) / 2 - 140));" & vbLf
     html = html & "  radiusCallout(arcX, arcY, 0, radius, left - 68, 232);" & vbLf
-    html = html & "  radiusCallout(l2 / 2, height, l2 / 2, height - radius, midX + 56, Math.min(topFit + 103, 217));" & vbLf
+    html = html & "  radiusCallout(l2 / 2, height, l2 / 2, height - radius, midX + crownLabelShift, Math.min(topFit + 112, 217));" & vbLf
     html = html & "  radiusCallout(l2 - arcX, arcY, l2, radius, right + 68, 246);" & vbLf
     html = html & "}" & vbLf
+    html = html & "const lengthOffset = 28;" & vbLf
+    html = html & "const measureY = baseline - lengthOffset;" & vbLf
+    html = html & "for (const edge of [left, right]) line(edge, baseline, edge, measureY - 4, blue, [3, 3]);" & vbLf
+    html = html & "curve(cosine.map(([px, py]) => [px, py - lengthOffset]), blue, [], 1.5);" & vbLf
+    html = html & "arrowhead(left, measureY, 0, 1, blue);" & vbLf
+    html = html & "arrowhead(right, measureY, 0, -1, blue);" & vbLf
+    html = html & "label(`l\u2081 = ${withUnit(l1, 'mm')}`, midX, y(2 * amplitude) - lengthOffset - 8, blue);" & vbLf
     html = html & "</script>" & vbLf
     html = html & "</body>" & vbLf
     html = html & "</html>" & vbLf

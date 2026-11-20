@@ -15,6 +15,7 @@ figure,section{margin:20px 0 0;background:#fff;border:1px solid #d7e2e5;border-r
 figcaption{display:flex;gap:12px 26px;flex-wrap:wrap;color:#364d59;font-size:.9rem}
 .key{display:inline-block;width:24px;margin-right:8px;border-top:3px solid #03796d;vertical-align:middle}
 .cosine{border-color:#4151aa;border-top-style:dashed}
+.straight{border-color:#a13355}
 details{margin-top:20px}summary{cursor:pointer;width:max-content;padding:8px 13px;border:1px solid #91a9af;border-radius:6px;background:#fff;font-weight:650}
 details section{margin-top:10px}
 table{width:100%;border-collapse:collapse;font-size:.94rem}
@@ -43,7 +44,8 @@ The dimension values are listed in the table.
 </div>
 <figcaption>
 <span><i class="key cosine"></i>Cosine reference with target length l<sub>1</sub></span>
-<span><i class="key"></i>Fitted profile with three circular arcs</span>
+<span id="arc-key"><i class="key"></i>Fitted circular arcs</span>
+<span><i class="key straight"></i>Fitted straight segments</span>
 </figcaption>
 </figure>
 <section aria-labelledby="geometry-title">
@@ -156,6 +158,7 @@ const left = (canvas.width - l2 * scale) / 2;
 const x = distance => left + distance * scale;
 const y = ordinate => 276 - ordinate * scale;
 const ink = '#334d5b', blue = '#4151aa', green = '#03796d', orange = '#a45315';
+const straight = '#a13355';
 function line(x1, y1, x2, y2, color = ink, dash = [], width = 1.3) {
   ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash);
   ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]);
@@ -164,36 +167,54 @@ function label(text, px, py, color = ink) {
   ctx.font = '600 17px system-ui'; ctx.fillStyle = color; ctx.textAlign = 'center';
   ctx.lineWidth = 5; ctx.strokeStyle = '#fff'; ctx.strokeText(text, px, py); ctx.fillText(text, px, py);
 }
+function arrowhead(px, py, alpha, sign, color) {
+  for (const delta of [-.48, .48]) {
+    line(px, py, px + sign * 8 * Math.cos(alpha + delta), py + sign * 8 * Math.sin(alpha + delta), color);
+  }
+}
 function dimension(x1, y1, x2, y2, color = ink) {
   line(x1, y1, x2, y2, color);
   const alpha = Math.atan2(y2 - y1, x2 - x1);
-  for (const [px, py, sign] of [[x1, y1, 1], [x2, y2, -1]]) {
-    for (const delta of [-.48, .48]) {
-      line(px, py, px + sign * 8 * Math.cos(alpha + delta), py + sign * 8 * Math.sin(alpha + delta), color);
-    }
-  }
+  arrowhead(x1, y1, alpha, 1, color);
+  arrowhead(x2, y2, alpha, -1, color);
 }
-function curve(points, color, dash) {
-  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.setLineDash(dash);
-  points.forEach((v, i) => ctx.lineTo(x(l2 * i / (points.length - 1)), y(v)));
+function curve(points, color, dash = [], width = 3.5) {
+  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash);
+  ctx.moveTo(...points[0]);
+  for (const point of points.slice(1)) ctx.lineTo(...point);
   ctx.stroke(); ctx.setLineDash([]);
 }
 const midX = x(l2 / 2), right = x(l2), baseline = y(0);
+const cosine = Array.from({length: 1001}, (_, i) => [
+  x(l2 * i / 1000), y(amplitude * (1 - Math.cos(2 * Math.PI * i / 1000)))
+]);
 line(left, baseline, right, baseline, '#96aab2');
 for (const edge of [left, right]) line(edge, baseline - 4, edge, 312, '#96aab2');
 dimension(left, 306, right, 306);
 label(`l\u2082 = ${withUnit(l2, 'mm')}`, midX, 330);
-curve(fit, green, []);
-const cosine = Array.from({length: 1001}, (_, i) => amplitude * (1 - Math.cos(2 * Math.PI * i / 1000)));
-curve(cosine, blue, [8, 6]);
 if (radius === null) {
-  label(`Flat profile, h = ${withUnit(height, 'mm')}`, midX, 243);
-  label(`l\u2081 = ${withUnit(l1, 'mm')}`, midX, 266, blue);
+  document.getElementById('arc-key').hidden = true;
+  curve([[left, baseline], [right, baseline]], straight);
+  curve(cosine, blue, [8, 6], 2.4);
+  label(`Flat profile, h = ${withUnit(height, 'mm')}`, midX, 209);
 } else {
   const topFit = y(height), heightX = right + 147;
-  const targetX = x(.28 * l2), targetY = y(cosine[280]);
-  line(x(.11 * l2), 39, targetX, targetY, blue, [4, 4]);
-  label(`l\u2081 = ${withUnit(l1, 'mm')}`, x(.11 * l2), 31, blue);
+  const phi = angle * Math.PI / 180;
+  const xJoin = radius * Math.sin(phi);
+  const yJoin = 2 * radius * Math.sin(phi / 2) ** 2;
+  const innerJoin = l2 / 2 - xJoin;
+  const innerY = yJoin + (innerJoin - xJoin) * Math.tan(phi);
+  const leftOuter = [x(xJoin), y(yJoin)], leftInner = [x(innerJoin), y(innerY)];
+  const rightInner = [x(l2 - innerJoin), y(innerY)], rightOuter = [x(l2 - xJoin), y(yJoin)];
+  const fitted = fit.map((v, i) => [x(l2 * i / (fit.length - 1)), y(v)]);
+  // Use the exact tangent contacts for the colour changes between arcs and straight segments.
+  curve([...fitted.filter(([px]) => px < leftOuter[0]), leftOuter], green);
+  curve([leftOuter, leftInner], straight);
+  curve([leftInner, ...fitted.filter(([px]) => px > leftInner[0] && px < rightInner[0]), rightInner], green);
+  curve([rightInner, rightOuter], straight);
+  curve([rightOuter, ...fitted.filter(([px]) => px > rightOuter[0])], green);
+  curve(cosine, blue, [8, 6], 2.4);
+
   if (baseline - topFit >= 20) {
     line(midX, topFit, heightX, topFit, '#96aab2', [4, 4]);
     line(right, baseline, heightX, baseline, '#96aab2', [4, 4]);
@@ -201,14 +222,9 @@ if (radius === null) {
   }
   label(`h = ${withUnit(height, 'mm')}`, heightX - 68, (topFit + baseline) / 2 + 6, green);
 
-  const phi = angle * Math.PI / 180;
-  const xJoin = radius * Math.sin(phi);
-  const yJoin = 2 * radius * Math.sin(phi / 2) ** 2;
-  const innerJoin = l2 / 2 - xJoin;
-  const innerY = yJoin + (innerJoin - xJoin) * Math.tan(phi);
   const flankLengthPx = Math.hypot((innerJoin - xJoin) * scale, (innerY - yJoin) * scale);
   if (flankLengthPx >= 36 && baseline - topFit >= 36) {
-    const startX = x(xJoin), startY = y(yJoin);
+    const [startX, startY] = leftOuter;
     const arcSize = Math.min(37, flankLengthPx * .47);
     line(startX, startY, startX + arcSize + 18, startY, orange, [4, 3]);
     ctx.beginPath(); ctx.strokeStyle = orange; ctx.lineWidth = 1.3;
@@ -228,10 +244,18 @@ if (radius === null) {
   // The end circles are centred above the endpoints. The crest circle is centred below the crest.
   const arcX = radius * Math.sin(phi / 2);
   const arcY = 2 * radius * Math.sin(phi / 4) ** 2;
+  const crownLabelShift = Math.max(0, Math.min(56, (right - left) / 2 - 140));
   radiusCallout(arcX, arcY, 0, radius, left - 68, 232);
-  radiusCallout(l2 / 2, height, l2 / 2, height - radius, midX + 56, Math.min(topFit + 103, 217));
+  radiusCallout(l2 / 2, height, l2 / 2, height - radius, midX + crownLabelShift, Math.min(topFit + 112, 217));
   radiusCallout(l2 - arcX, arcY, l2, radius, right + 68, 246);
 }
+const lengthOffset = 28;
+const measureY = baseline - lengthOffset;
+for (const edge of [left, right]) line(edge, baseline, edge, measureY - 4, blue, [3, 3]);
+curve(cosine.map(([px, py]) => [px, py - lengthOffset]), blue, [], 1.5);
+arrowhead(left, measureY, 0, 1, blue);
+arrowhead(right, measureY, 0, -1, blue);
+label(`l\u2081 = ${withUnit(l1, 'mm')}`, midX, y(2 * amplitude) - lengthOffset - 8, blue);
 </script>
 </body>
 </html>
