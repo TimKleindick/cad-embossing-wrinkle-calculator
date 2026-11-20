@@ -37,16 +37,22 @@ and optional wall thickness from 0 to 1,000,000 mm. These are numerical limits.
 | Radius R of each fitted circular arc | 5.03 mm |
 | Fitted profile height h | 12.23 mm |
 | Flank angle (phi) | 49.84 deg |
-| Calculated outer-fibre strain | 13.47% |
+| Legacy estimate at the cosine crest | 7.43 mm / 13.47% |
+| Cosine curvature at the crest | 3.71 mm / 26.93% |
 
 The calculator uses `l1` as the target length along the cosine. It uses `l2` as the
 horizontal span between the endpoints of the deformed neutral-fibre profile. **More
 information** opens the length and shape comparison. Values in the report are rounded
 to two decimal places.
 
+**Cosine crest detail** overlays the cosine and both tangent circles at the crest
+on a common scale and lists the two radii and strain estimates. The **Cosine
+curvature** circle matches the local curvature. The **Legacy estimate** uses twice
+the radius for workbook compatibility.
+
 Enter fracture elongation A (%) from an applicable tensile test or DIN EN 755-2 in the
-browser report. The screening compares the unrounded calculated outer-fibre strain
-with that input. Below 70% of A is the low band. From 70% up to A is the critical band.
+browser report. The screening compares the unrounded **Legacy estimate** strain with
+that input. Below 70% of A is the low band. From 70% up to A is the critical band.
 At or above A is the high band. The screening uses user-defined thresholds. Crack
 formation requires separate validation. Select the material value manually for the
 applicable alloy, temper and product dimensions.

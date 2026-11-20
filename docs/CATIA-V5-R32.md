@@ -44,16 +44,19 @@ Add the directory once and reuse it from the macro dialog. Check whether your R3
 | Analytical length of the fitted profile | 40.17 mm |
 | Fitted polyline length deviation from l1 | +0.43% |
 | RMS and maximum sampled vertical shape deviations | 0.10 / 0.18 mm |
-| Calculated outer-fibre strain | 13.47% |
+| Legacy estimate at the cosine crest | 7.43 mm / 13.47% |
+| Cosine curvature at the crest | 3.71 mm / 26.93% |
 
-In **Strain and fracture screening**, enter fracture elongation A (%) from an applicable tensile test or DIN EN 755-2. Verify the alloy, temper and product dimensions before choosing the value. For this reference case, `20` gives the low band, `16` the critical band and `12` the high band. The report compares the full-precision strain with 70% and 100% of the entered value. The two-decimal display does not affect the assessment. The bands are a screening rule and cannot establish whether cracking will occur. [DIN EN 755-2:2025](https://www.dinmedia.de/en/standard/din-en-755-2/393018811)
+In **Cosine crest detail**, check that both circle segments and the cosine share the same crest and tangent. The browser report and the text fallback both show the radius and estimated strain for each method.
+
+In **Strain and fracture screening**, enter fracture elongation A (%) from an applicable tensile test or DIN EN 755-2. Verify the alloy, temper and product dimensions before choosing the value. For this reference case, `20` gives the low band, `16` the critical band and `12` the high band. The report compares the unrounded **Legacy estimate** strain with 70% and 100% of the entered value. The bands are a screening rule and cannot establish whether cracking will occur. [DIN EN 755-2:2025](https://www.dinmedia.de/en/standard/din-en-755-2/393018811)
 
 ## 4. Try cancellation and other inputs
 
 - **Cancel** or an empty value ends the run before calculation. CATIA's input box reports a blank confirmation and a cancellation the same way.
 - **No** at the wall thickness prompt calculates without strain estimates. **Cancel** ends the run. **Yes** requires a wall thickness value.
 - Try `29 / 30`, text in a length field, or negative thickness. The calculator should show an error without a success report. Supported lengths are 0.001 to 1,000,000 mm with `l2 <= l1 <= 2*l2`. Optional wall thickness ranges from 0 to 1,000,000 mm.
-- Try `30 / 30` with thickness off. The profile is flat, with zero height, angle and deviations. The circular arc radius and the strain estimate are unavailable.
+- Try `30 / 30` with thickness off. The flat profile has no finite cosine radius and no circles to draw. With thickness off, both strain estimates are unavailable. With thickness supplied, both are zero.
 - Try `80 / 60 / 4`. Absolute lengths double and angles, relative errors and strain estimates stay the same.
 - Verify that CATIA is available after the report opens. Run the macro again and cancel after the first input. Then restart CATIA, check the directory registration, and verify that the macro leaves all geometry and document state unchanged.
 

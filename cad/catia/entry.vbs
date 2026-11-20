@@ -102,6 +102,36 @@ Function WOpenResult(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
     WOpenResult = True
 End Function
 
+Function WCosineNumber(ByVal value,ByVal unit)
+    Dim exponent,mantissaText
+    If value<=0 Or value>=0.01 Then
+        WCosineNumber=WEntryNumber(value,unit)
+        Exit Function
+    End If
+    exponent=Int(Log(value)/Log(10))
+    mantissaText=FormatNumber(value/(10^exponent),2,-1,0,0)
+    If CDbl(mantissaText)>=10 Then
+        mantissaText=FormatNumber(1,2,-1,0,0)
+        exponent=exponent+1
+    End If
+    WCosineNumber=mantissaText & "e" & CStr(exponent) & " " & unit
+End Function
+
+Function WCosineEstimateText(ByVal methodLabel,ByVal radius,ByVal strain)
+    Dim radiusText,strainText
+    If IsEmpty(radius) Then
+        radiusText="unbounded (flat cosine)"
+    Else
+        radiusText=WCosineNumber(radius,"mm")
+    End If
+    If IsEmpty(strain) Then
+        strainText="not calculated (no thickness)"
+    Else
+        strainText=WCosineNumber(strain,"%")
+    End If
+    WCosineEstimateText=methodLabel & ": R = " & radiusText & ", outer-fibre strain = " & strainText
+End Function
+
 Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness)
     Dim report
     report="SOURCE PREVIEW - CATIA runtime and import untested" & vbCrLf
@@ -111,9 +141,12 @@ Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness)
     report=report & "Height h: " & WEntryNumber(v(2),"mm") & vbCrLf
     report=report & "Flank angle: " & WEntryNumber(v(3),"deg") & vbCrLf
     report=report & "Wall thickness: " & WEntryNumber(thickness,"mm") & vbCrLf
-    report=report & "Calculated outer-fibre strain: " & WEntryNumber(v(13),"%") & vbCrLf
     report=report & "l2 is the horizontal endpoint span of the neutral fibre." & vbCrLf
-    WResultText=report & "Crack-risk comparison requires the illustrated report."
+    report=report & WCosineEstimateText("Legacy estimate",v(10),v(13)) & vbCrLf
+    report=report & WCosineEstimateText("Cosine curvature",v(11),v(14)) & vbCrLf
+    report=report & "Both strains are model estimates." & vbCrLf
+    report=report & "Fracture screening uses the legacy estimate in the illustrated report." & vbCrLf
+    WResultText=report & "Actual cracking requires application-specific validation."
 End Function
 
 Function WrinkleRunChecked(ByRef ui)

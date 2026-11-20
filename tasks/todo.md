@@ -136,3 +136,15 @@ Trivial display change using GPT-6.2-sol with direct implementation. The shared 
 ## Review
 
 The new sketch test failed against the prior report and passed after the change. All 26 tests pass. Both regenerated launchers pass the freshness check and Python sources compile. Headless Chrome rendered the 40/30, 30/30, 60/30 and almost flat 30.003/30 cases. The numerical results, report payloads and screening sections match the previous revision for all four cases. This small change used direct implementation without subagents. Only the shared sketch, generated launchers, tests and task notes changed. GitHub Actions records platform checks. Execution inside either CAD host still requires workstation validation.
+
+# Compare the two cosine radii at the crest
+
+Standard change using GPT-6.2-sol. Reuse the existing legacy and exact cosine radii and strains in the shared payload. Plot the true cosine and tangent circle segments at the common crest using equal axes. The profile fit and the legacy screening basis and thresholds stay intact. Implement the shared report and verification directly, with the native fallbacks delegated to `/root/cosine_text_fallback`.
+
+- [x] Independently verify both kernel conventions and reproduce missing crest detail and comparison with tests.
+- [x] Implement the common browser detail and text fallbacks, update the guides, and regenerate both entries.
+- [x] Verify reference, flat, nearly flat, high-curvature, and missing-thickness cases in the report.
+
+## Review
+
+27 tests passed, including the failing-then-passing report regression for tangent circles, true cosine samples and legacy screening. An independent bisection and analytical curvature calculation reproduced both reference radii and strains. The result data and main profile sketch matched the previous revision in seven cases, and both kernels are byte-identical. Both generated files passed the freshness check. Chrome rendered the reference and limits and exercised the three screening outcomes. The NX fallback passed reference and small-number checks locally. The native fallback role (`/root/cosine_text_fallback`) supplied both text adapters and locale fixtures. GitHub Actions records the Windows and packaging checks. Execution in both CAD hosts still needs workstation validation.

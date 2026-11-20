@@ -14,6 +14,15 @@ import time
 ROOT=Path(__file__).resolve().parents[1]
 
 
+def assert_cosine_text(report, legacy_radius, legacy_strain, exact_radius, exact_strain):
+    lines = report.splitlines()
+    assert f'Legacy estimate: R = {legacy_radius}, outer-fibre strain = {legacy_strain}' in lines,report
+    assert f'Cosine curvature: R = {exact_radius}, outer-fibre strain = {exact_strain}' in lines,report
+    assert 'Both strains are model estimates.' in lines,report
+    assert 'Fracture screening uses the legacy estimate in the illustrated report.' in lines,report
+    assert 'Actual cracking requires application-specific validation.' in lines,report
+
+
 def main():
     if sys.platform!='win32':
         raise RuntimeError('Windows desktop test requires Windows; NX is not loaded')
@@ -86,8 +95,7 @@ runpy.run_path('NX_WrinkleCalculator.py')['run_dialog'](owner=0, open_file=captu
             assert 'Deformed wall length l2 (neutral fibre) [mm]: 30.00' in report,report
             assert 'Circular arc radius R [mm]: 5.03' in report,report
             assert 'Wall thickness [mm]: 2.00' in report,report
-            assert 'Calculated outer-fibre strain [%]: 13.47' in report,report
-            assert 'Crack-risk comparison requires the illustrated report.' in report,report
+            assert_cosine_text(report, '7.43 mm', '13.47 %', '3.71 mm', '26.93 %')
             for omitted in ('Cosine amplitude', 'Straight length', 'length deviation', 'Corrected cosine'):
                 assert omitted not in report,report
             html = (Path(tmp) / 'captured-report.html').read_text(encoding='ascii')
@@ -99,16 +107,28 @@ runpy.run_path('NX_WrinkleCalculator.py')['run_dialog'](owner=0, open_file=captu
             # German decimal is accepted independently of machine locale.
             set_text(hwnd,101,'40,0');click()
             assert 'Undeformed wall length l1 [mm]: 40.00' in text(),text()
+            set_text(hwnd,101,'0.002')
+            set_text(hwnd,102,'0.001')
+            set_text(hwnd,103,'0.000000001')
+            click()
+            assert_cosine_text(text(), '1.22e-4 mm', '4.08e-4 %', '6.12e-5 mm', '8.17e-4 %')
+            set_text(hwnd,102,'30')
+            set_text(hwnd,103,'2')
             # Invalid input replaces the previous successful report.
             set_text(hwnd,101,'29');click()
             assert text().startswith('Error:') and 'Undeformed wall length l1 [mm]: 40.00' not in text(),text()
             # Flat input and disabled thickness ignore an invalid inactive field.
             set_text(hwnd,101,'30')
+            click()
+            flat_radius = 'unbounded (flat cosine)'
+            assert_cosine_text(text(), flat_radius, '0.00 %', flat_radius, '0.00 %')
             set_text(hwnd,103,'disabled text')
             (Path(tmp) / 'block-report').touch()
             send(user.GetDlgItem(hwnd,104),0xf1,0);click()
             actual = text()
             assert 'Not applicable or not provided' in actual and 'Error:' not in actual,actual
+            missing_strain = 'not calculated (no thickness)'
+            assert_cosine_text(actual, flat_radius, missing_strain, flat_radius, missing_strain)
             assert 'Could not open the illustrated report' in actual,actual
             send(hwnd,0x10)  # WM_CLOSE
             out,err=process.communicate(timeout=10)

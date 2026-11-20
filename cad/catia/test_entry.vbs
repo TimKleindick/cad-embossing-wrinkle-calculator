@@ -30,7 +30,19 @@ Class FixtureDialogs
     End Sub
 End Class
 
-Dim sample, value, caught, fake, success, localeId, previousLocale, restored, summary
+Sub AssertCosineText(ByVal textResult, ByVal legacyRadius, ByVal legacyStrain, ByVal exactRadius, ByVal exactStrain)
+    Assert InStr(textResult,"Legacy estimate: R = " & legacyRadius & ", outer-fibre strain = " & legacyStrain)>0,"legacy method"
+    Assert InStr(textResult,"Cosine curvature: R = " & exactRadius & ", outer-fibre strain = " & exactStrain)>0,"curvature method"
+    Assert InStr(textResult,"Both strains are model estimates.")>0,"model estimates"
+    Assert InStr(textResult,"Fracture screening uses the legacy estimate in the illustrated report.")>0,"screening basis and location"
+    Assert InStr(textResult,"Actual cracking requires application-specific validation.")>0,"validation caveat"
+    Assert Len(textResult)<1024,"compact message box fallback"
+End Sub
+
+Dim sample, value, caught, fake, success, localeId, previousLocale, restored
+Dim legacyRadius, legacyStrain, exactRadius, exactStrain, zeroStrain, flatRadius, missingStrain
+flatRadius="unbounded (flat cosine)"
+missingStrain="not calculated (no thickness)"
 For Each localeId In Array(1033,1031)
     previousLocale=SetLocale(localeId)
     Assert Abs(WParseDecimal("6,25")-6.25)<0.000001,"comma decimal"
@@ -50,15 +62,28 @@ For Each localeId In Array(1033,1031)
     Assert success And fake.errorText="","successful entry workflow"
     Assert InStr(fake.prompts,"Undeformed wall length l1")>0,"l1 input label"
     Assert InStr(fake.prompts,"Deformed wall length l2 (neutral fibre, horizontal endpoint span)")>0,"l2 input label"
-    If localeId=1033 Then summary="13.47 %" Else summary="13,47 %"
-    Assert InStr(fake.outputs,"Calculated outer-fibre strain: " & summary)>0,"rounded calculated strain"
+    If localeId=1033 Then
+        legacyRadius="7.43 mm": legacyStrain="13.47 %": exactRadius="3.71 mm": exactStrain="26.93 %": zeroStrain="0.00 %"
+    Else
+        legacyRadius="7,43 mm": legacyStrain="13,47 %": exactRadius="3,71 mm": exactStrain="26,93 %": zeroStrain="0,00 %"
+    End If
+    Call AssertCosineText(fake.outputs,legacyRadius,legacyStrain,exactRadius,exactStrain)
     Assert InStr(fake.outputs,"Undeformed wall length l1")>0,"l1 naming"
     Assert InStr(fake.outputs,"Deformed wall length l2 (neutral fibre)")>0,"l2 naming"
     Assert InStr(fake.outputs,"horizontal endpoint span")>0,"l2 definition"
     Assert InStr(fake.outputs,"Circular arc radius R")>0,"circular arc terminology"
-    Assert InStr(fake.outputs,"Crack-risk comparison requires the illustrated report.")>0,"fracture comparison location"
     Assert InStr(fake.outputs,"cosine amplitude")=0 And InStr(fake.outputs,"Straight length")=0,"omit A and s"
     Assert InStr(fake.outputs,"Maximum vertical deviation")=0 And InStr(fake.outputs,"Corrected cosine")=0,"omit diagnostics"
+    Set fake=New FixtureDialogs
+    fake.answers=Array("0.002","0.001","0.000000001")
+    fake.thicknessChoice=6
+    success=WrinkleRun(fake)
+    Assert success,"small positive radius and strain"
+    If localeId=1033 Then
+        Call AssertCosineText(fake.outputs,"1.22e-4 mm","4.08e-4 %","6.12e-5 mm","8.17e-4 %")
+    Else
+        Call AssertCosineText(fake.outputs,"1,22e-4 mm","4,08e-4 %","6,12e-5 mm","8,17e-4 %")
+    End If
     Set fake=New FixtureDialogs
     fake.answers=Array("40","30","2,5")
     fake.thicknessChoice=6
@@ -72,7 +97,14 @@ For Each localeId In Array(1033,1031)
     fake.answers=Array("30","30")
     success=WrinkleRun(fake)
     Assert success And InStr(fake.outputs,"Not applicable")>0,"flat and thickness disabled"
+    Call AssertCosineText(fake.outputs,flatRadius,missingStrain,flatRadius,missingStrain)
     Assert InStr(fake.reportData,"""thickness"":null,""values"":[0,null,0,0,15,")>0,"flat report values and missing radius"
+    Set fake=New FixtureDialogs
+    fake.answers=Array("30","30","2")
+    fake.thicknessChoice=6
+    success=WrinkleRun(fake)
+    Assert success,"flat with thickness"
+    Call AssertCosineText(fake.outputs,flatRadius,zeroStrain,flatRadius,zeroStrain)
     For Each sample In Array(Array("","30"),Array("40",""),Array("40","30",""))
         Set fake=New FixtureDialogs
         fake.answers=sample

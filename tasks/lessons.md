@@ -17,3 +17,5 @@
 - **When two launchers show the same report, embed one template in both delivered files.** Verify the template and numerical payload from the standalone launchers so their labels and units stay in sync.
 
 - **Screen with the unrounded values and round only for display.** Test the boundaries and a reference strain that rounds to the same displayed percentage as the input limit.
+
+- **For a zoom at a cosine crest, compute local sag before applying one common scale.** Check both circle equations and the sampled cosine at that scale. Report overlaps when the true separation is smaller than the line width.

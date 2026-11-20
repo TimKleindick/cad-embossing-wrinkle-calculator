@@ -308,6 +308,36 @@ Function WOpenResult(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
     WOpenResult = True
 End Function
 
+Function WCosineNumber(ByVal value,ByVal unit)
+    Dim exponent,mantissaText
+    If value<=0 Or value>=0.01 Then
+        WCosineNumber=WEntryNumber(value,unit)
+        Exit Function
+    End If
+    exponent=Int(Log(value)/Log(10))
+    mantissaText=FormatNumber(value/(10^exponent),2,-1,0,0)
+    If CDbl(mantissaText)>=10 Then
+        mantissaText=FormatNumber(1,2,-1,0,0)
+        exponent=exponent+1
+    End If
+    WCosineNumber=mantissaText & "e" & CStr(exponent) & " " & unit
+End Function
+
+Function WCosineEstimateText(ByVal methodLabel,ByVal radius,ByVal strain)
+    Dim radiusText,strainText
+    If IsEmpty(radius) Then
+        radiusText="unbounded (flat cosine)"
+    Else
+        radiusText=WCosineNumber(radius,"mm")
+    End If
+    If IsEmpty(strain) Then
+        strainText="not calculated (no thickness)"
+    Else
+        strainText=WCosineNumber(strain,"%")
+    End If
+    WCosineEstimateText=methodLabel & ": R = " & radiusText & ", outer-fibre strain = " & strainText
+End Function
+
 Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness)
     Dim report
     report="SOURCE PREVIEW - CATIA runtime and import untested" & vbCrLf
@@ -317,9 +347,12 @@ Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness)
     report=report & "Height h: " & WEntryNumber(v(2),"mm") & vbCrLf
     report=report & "Flank angle: " & WEntryNumber(v(3),"deg") & vbCrLf
     report=report & "Wall thickness: " & WEntryNumber(thickness,"mm") & vbCrLf
-    report=report & "Calculated outer-fibre strain: " & WEntryNumber(v(13),"%") & vbCrLf
     report=report & "l2 is the horizontal endpoint span of the neutral fibre." & vbCrLf
-    WResultText=report & "Crack-risk comparison requires the illustrated report."
+    report=report & WCosineEstimateText("Legacy estimate",v(10),v(13)) & vbCrLf
+    report=report & WCosineEstimateText("Cosine curvature",v(11),v(14)) & vbCrLf
+    report=report & "Both strains are model estimates." & vbCrLf
+    report=report & "Fracture screening uses the legacy estimate in the illustrated report." & vbCrLf
+    WResultText=report & "Actual cracking requires application-specific validation."
 End Function
 
 Function WrinkleRunChecked(ByRef ui)
@@ -389,10 +422,17 @@ Function WResultTemplate()
     html = html & "h2{margin:0 0 8px;font-size:1.16rem}p{margin:0;color:#465c66}" & vbLf
     html = html & "figure,section{margin:20px 0 0;background:#fff;border:1px solid #d7e2e5;border-radius:12px;padding:18px}" & vbLf
     html = html & ".plot{overflow-x:auto}canvas{width:100%;min-width:640px;height:auto;display:block}" & vbLf
-    html = html & "figcaption{display:flex;gap:12px 26px;flex-wrap:wrap;color:#364d59;font-size:.9rem}" & vbLf
+    html = html & "figcaption,.detail-key{display:flex;gap:12px 26px;flex-wrap:wrap;color:#364d59;font-size:.9rem}" & vbLf
     html = html & ".key{display:inline-block;width:24px;margin-right:8px;border-top:3px solid #03796d;vertical-align:middle}" & vbLf
     html = html & ".cosine{border-color:#4151aa;border-top-style:dashed}" & vbLf
     html = html & ".straight{border-color:#a13355}" & vbLf
+    html = html & ".legacy{border-color:#934717;border-top-style:dashed}" & vbLf
+    html = html & ".crest-cosine{border-color:#4151aa;border-top-style:dotted}" & vbLf
+    html = html & ".common-tangent{border-top:1px solid #647c86}" & vbLf
+    html = html & "#crest-detail{min-width:0}" & vbLf
+    html = html & "#crest-values{margin-top:12px}" & vbLf
+    html = html & "#crest-values thead th{border-bottom:1px solid #e7eef0}" & vbLf
+    html = html & "#crest-values thead th:not(:first-child){width:auto;text-align:right}" & vbLf
     html = html & "details{margin-top:20px}summary{cursor:pointer;width:max-content;padding:8px 13px;border:1px solid #91a9af;border-radius:6px;background:#fff;font-weight:650}" & vbLf
     html = html & "details section{margin-top:10px}" & vbLf
     html = html & "table{width:100%;border-collapse:collapse;font-size:.94rem}" & vbLf
@@ -430,17 +470,36 @@ Function WResultTemplate()
     html = html & "<table aria-labelledby=""geometry-title""><tbody id=""geometry""></tbody></table>" & vbLf
     html = html & "<p class=""note"">l<sub>2</sub> is the horizontal span between the neutral-fibre endpoints in this model.</p>" & vbLf
     html = html & "</section>" & vbLf
+    html = html & "<section aria-labelledby=""crest-title"">" & vbLf
+    html = html & "<h2 id=""crest-title"">Cosine crest detail</h2>" & vbLf
+    html = html & "<div id=""crest-plot"" hidden>" & vbLf
+    html = html & "<canvas id=""crest-detail"" width=""800"" height=""250"" role=""img"" aria-label=""Neutral-fibre cosine and two tangent circle segments overlaid at the crest on equal axes"" aria-describedby=""crest-caption""></canvas>" & vbLf
+    html = html & "<div class=""detail-key"" id=""crest-caption"">" & vbLf
+    html = html & "<span><i class=""key crest-cosine""></i>Neutral-fibre cosine</span>" & vbLf
+    html = html & "<span><i class=""key common-tangent""></i>Common tangent at the crest</span>" & vbLf
+    html = html & "</div>" & vbLf
+    html = html & "<p class=""note"">Both circles touch at the crest. The <strong>Cosine curvature</strong> circle also matches the local curvature there. The <strong>Legacy estimate</strong> uses twice that radius for workbook compatibility. The horizontal and vertical scales are equal.</p>" & vbLf
+    html = html & "<p class=""note"" id=""crest-overlap"" hidden>The segments nearly overlap at this scale.</p>" & vbLf
+    html = html & "</div>" & vbLf
+    html = html & "<p class=""note"" id=""crest-empty"" hidden></p>" & vbLf
+    html = html & "<table id=""crest-values"" aria-labelledby=""crest-title"">" & vbLf
+    html = html & "<thead><tr><th scope=""col"">Method</th><th scope=""col"">Radius R</th><th scope=""col"">Estimated outer-fibre bending strain</th></tr></thead>" & vbLf
+    html = html & "<tbody>" & vbLf
+    html = html & "<tr><th scope=""row""><i class=""key legacy""></i>Legacy estimate</th><td class=""value"" id=""legacy-radius""></td><td class=""value"" id=""legacy-strain""></td></tr>" & vbLf
+    html = html & "<tr><th scope=""row""><i class=""key""></i>Cosine curvature</th><td class=""value"" id=""curvature-radius""></td><td class=""value"" id=""curvature-strain""></td></tr>" & vbLf
+    html = html & "</tbody>" & vbLf
+    html = html & "</table>" & vbLf
+    html = html & "</section>" & vbLf
     html = html & "<section aria-labelledby=""strain-title"">" & vbLf
     html = html & "<h2 id=""strain-title"">Strain and fracture screening</h2>" & vbLf
     html = html & "<table aria-labelledby=""strain-title""><tbody>" & vbLf
     html = html & "<tr><th scope=""row"">Wall thickness</th><td class=""value"" id=""wall-thickness""></td></tr>" & vbLf
     html = html & "<tr><th scope=""row""><label for=""fracture-elongation"">Fracture elongation A</label></th>" & vbLf
     html = html & "<td class=""value""><input id=""fracture-elongation"" type=""text"" inputmode=""decimal"" maxlength=""24"" aria-describedby=""fracture-source"" placeholder=""e.g. 15.00""> %</td></tr>" & vbLf
-    html = html & "<tr><th scope=""row"">Calculated outer-fibre strain</th><td class=""value"" id=""outer-strain""></td></tr>" & vbLf
-    html = html & "<tr><th scope=""row"">Fracture risk screening</th><td class=""value"" id=""fracture-band"" aria-live=""polite""></td></tr>" & vbLf
+    html = html & "<tr><th scope=""row"">Fracture risk screening (Legacy estimate)</th><td class=""value"" id=""fracture-band"" aria-live=""polite""></td></tr>" & vbLf
     html = html & "</tbody></table>" & vbLf
     html = html & "<p class=""note"" id=""fracture-source"">Enter the elongation from a tensile test or the applicable value from DIN EN 755-2.</p>" & vbLf
-    html = html & "<p class=""note"">The estimate is for the outer fibre at the point of maximum cosine curvature. The 70% and 100% bands are screening rules. Actual cracking requires application-specific validation.</p>" & vbLf
+    html = html & "<p class=""note"">Both strains use the simplified bending model <var>t</var>/(2<var>R</var>). Screening compares the unrounded Legacy estimate with 70% and 100% of the entered elongation. Actual cracking and production suitability require application-specific validation.</p>" & vbLf
     html = html & "</section>" & vbLf
     html = html & "<details>" & vbLf
     html = html & "<summary>More information</summary>" & vbLf
@@ -471,6 +530,7 @@ Function WResultTemplate()
     html = html & "'use strict';" & vbLf
     html = html & "const {l1, l2, thickness, values, fit} = JSON.parse(document.getElementById('result-data').textContent);" & vbLf
     html = html & "const [amplitude, radius, height, angle] = values;" & vbLf
+    html = html & "const [legacyRadius, curvatureRadius, , legacyStrain, curvatureStrain] = values.slice(10, 15);" & vbLf
     html = html & "const format = new Intl.NumberFormat('en-GB', {minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false});" & vbLf
     html = html & "const withUnit = (value, unit) => value === null ? '\u2013' : `${format.format(value)} ${unit}`;" & vbLf
     html = html & "function table(id, rows) {" & vbLf
@@ -504,9 +564,7 @@ Function WResultTemplate()
     html = html & "const meetsTarget = Math.abs(values[7]) < 0.1;" & vbLf
     html = html & "target.textContent = meetsTarget ? 'Length deviation is below 0.10%.' : 'Length deviation reaches or exceeds 0.10%.';" & vbLf
     html = html & "if (!meetsTarget) target.classList.add('warning');" & vbLf
-    html = html & "const strain = values[13];" & vbLf
     html = html & "document.getElementById('wall-thickness').textContent = withUnit(thickness, 'mm');" & vbLf
-    html = html & "document.getElementById('outer-strain').textContent = withUnit(strain, '%');" & vbLf
     html = html & "const elongationInput = document.getElementById('fracture-elongation');" & vbLf
     html = html & "const assessment = document.getElementById('fracture-band');" & vbLf
     html = html & "const bandLabels = {" & vbLf
@@ -517,13 +575,13 @@ Function WResultTemplate()
     html = html & "function updateAssessment() {" & vbLf
     html = html & "  const raw = elongationInput.value.trim();" & vbLf
     html = html & "  const elongation = parseFractureElongation(raw);" & vbLf
-    html = html & "  const band = fractureBand(strain, elongation);" & vbLf
+    html = html & "  const band = fractureBand(legacyStrain, elongation);" & vbLf
     html = html & "  const invalid = raw !== '' && elongation === null;" & vbLf
     html = html & "  elongationInput.setAttribute('aria-invalid', String(invalid));" & vbLf
     html = html & "  assessment.className = band ? `value ${band}` : 'value';" & vbLf
     html = html & "  if (band) assessment.textContent = bandLabels[band];" & vbLf
     html = html & "  else if (invalid) assessment.textContent = 'Enter a positive percentage.';" & vbLf
-    html = html & "  else if (strain === null) assessment.textContent = 'Wall thickness required.';" & vbLf
+    html = html & "  else if (legacyStrain === null) assessment.textContent = 'Wall thickness required.';" & vbLf
     html = html & "  else assessment.textContent = 'Enter fracture elongation to assess.';" & vbLf
     html = html & "}" & vbLf
     html = html & "elongationInput.addEventListener('input', updateAssessment);" & vbLf
@@ -633,6 +691,61 @@ Function WResultTemplate()
     html = html & "arrowhead(left, measureY, 0, 1, blue);" & vbLf
     html = html & "arrowhead(right, measureY, 0, -1, blue);" & vbLf
     html = html & "label(`l\u2081 = ${withUnit(l1, 'mm')}`, midX, y(2 * amplitude) - lengthOffset - 8, blue);" & vbLf
+    html = html & "</script>" & vbLf
+    html = html & "<script id=""crest-detail-script"">" & vbLf
+    html = html & "'use strict';" & vbLf
+    html = html & "const flatCosine = amplitude === 0;" & vbLf
+    html = html & "function crestValue(value, unit) {" & vbLf
+    html = html & "  if (!Number.isFinite(value)) return withUnit(null, unit);" & vbLf
+    html = html & "  return value > 0 && value < .01 ? `${value.toExponential(2)} ${unit}` : withUnit(value, unit);" & vbLf
+    html = html & "}" & vbLf
+    html = html & "const radiusText = value => flatCosine ? 'Unbounded (flat cosine)' : crestValue(value, 'mm');" & vbLf
+    html = html & "document.getElementById('legacy-radius').textContent = radiusText(legacyRadius);" & vbLf
+    html = html & "document.getElementById('curvature-radius').textContent = radiusText(curvatureRadius);" & vbLf
+    html = html & "document.getElementById('legacy-strain').textContent = crestValue(legacyStrain, '%');" & vbLf
+    html = html & "document.getElementById('curvature-strain').textContent = crestValue(curvatureStrain, '%');" & vbLf
+    html = html & "" & vbLf
+    html = html & "function drawCosineCrest(canvas, span, halfHeight, legacy, exact) {" & vbLf
+    html = html & "  const crestX = canvas.width / 2, crestY = 34;" & vbLf
+    html = html & "  const halfSpan = Math.min(span / 4, exact * .94);" & vbLf
+    html = html & "  // Work in local sag from the crest to avoid subtracting nearly equal heights or radii." & vbLf
+    html = html & "  const cosineSag = dx => 2 * halfHeight * Math.sin(Math.PI * (dx / span)) ** 2;" & vbLf
+    html = html & "  const circleSag = (dx, radius) => {" & vbLf
+    html = html & "    const ratio = dx / radius;" & vbLf
+    html = html & "    return dx * ratio / (1 + Math.sqrt(1 - ratio ** 2));" & vbLf
+    html = html & "  };" & vbLf
+    html = html & "  const largestSag = Math.max(cosineSag(halfSpan), circleSag(halfSpan, exact), circleSag(halfSpan, legacy));" & vbLf
+    html = html & "  const pixelsPerMm = Math.min((canvas.width - 96) / (2 * halfSpan), (canvas.height - crestY - 24) / largestSag);" & vbLf
+    html = html & "  canvas.height = Math.min(canvas.height, Math.ceil(crestY + largestSag * pixelsPerMm + 24));" & vbLf
+    html = html & "  const ctx = canvas.getContext('2d');" & vbLf
+    html = html & "  const offsets = Array.from({length: 161}, (_, i) => halfSpan * (i - 80) / 80);" & vbLf
+    html = html & "  function trace(xs, sag, color, dash, width) {" & vbLf
+    html = html & "    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash);" & vbLf
+    html = html & "    ctx.moveTo(crestX + xs[0] * pixelsPerMm, crestY + sag(xs[0]) * pixelsPerMm);" & vbLf
+    html = html & "    for (const dx of xs.slice(1)) ctx.lineTo(crestX + dx * pixelsPerMm, crestY + sag(dx) * pixelsPerMm);" & vbLf
+    html = html & "    ctx.stroke();" & vbLf
+    html = html & "  }" & vbLf
+    html = html & "  trace([-halfSpan, halfSpan], () => 0, '#647c86', [], 1);" & vbLf
+    html = html & "  trace(offsets, dx => circleSag(dx, exact), green, [], 4.5);" & vbLf
+    html = html & "  trace(offsets, dx => circleSag(dx, legacy), '#934717', [12, 6], 2.8);" & vbLf
+    html = html & "  trace(offsets, cosineSag, blue, [2, 5], 2.2);" & vbLf
+    html = html & "  ctx.beginPath(); ctx.arc(crestX, crestY, 3.5, 0, 2 * Math.PI); ctx.fillStyle = ink; ctx.fill();" & vbLf
+    html = html & "  ctx.font = '600 15px system-ui'; ctx.textAlign = 'center'; ctx.fillText('Crest', crestX, crestY - 9);" & vbLf
+    html = html & "  return (circleSag(halfSpan, exact) - circleSag(halfSpan, legacy)) * pixelsPerMm < 4;" & vbLf
+    html = html & "}" & vbLf
+    html = html & "const crestPlot = document.getElementById('crest-plot');" & vbLf
+    html = html & "const emptyCrest = document.getElementById('crest-empty');" & vbLf
+    html = html & "const canPlotCrest = legacyRadius >= curvatureRadius &&" & vbLf
+    html = html & "  [l2, amplitude, legacyRadius, curvatureRadius].every(value => Number.isFinite(value) && value > 0);" & vbLf
+    html = html & "crestPlot.hidden = !canPlotCrest;" & vbLf
+    html = html & "emptyCrest.hidden = canPlotCrest;" & vbLf
+    html = html & "if (canPlotCrest) {" & vbLf
+    html = html & "  const overlap = drawCosineCrest(document.getElementById('crest-detail'), l2, amplitude, legacyRadius, curvatureRadius);" & vbLf
+    html = html & "  document.getElementById('crest-overlap').hidden = !overlap;" & vbLf
+    html = html & "} else {" & vbLf
+    html = html & "  emptyCrest.textContent = flatCosine ? 'The flat cosine has zero curvature and no finite radius to draw.' :" & vbLf
+    html = html & "    'The crest detail is unavailable for this profile.';" & vbLf
+    html = html & "}" & vbLf
     html = html & "</script>" & vbLf
     html = html & "</body>" & vbLf
     html = html & "</html>" & vbLf

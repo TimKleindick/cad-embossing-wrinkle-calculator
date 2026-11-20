@@ -21,6 +21,13 @@ def parse_decimal(text):
     return float(text.replace(',','.'))
 
 
+def _cosine_number(value, unit):
+    if 0 < value < .01:
+        mantissa, exponent = f'{value:.2e}'.split('e')
+        return f'{mantissa}e{int(exponent)} {unit}'
+    return f'{value:.2f} {unit}'
+
+
 def format_report(result, thickness=None):
     fields = (
         ('Undeformed wall length l1 [mm]', result['l1_mm']),
@@ -29,14 +36,24 @@ def format_report(result, thickness=None):
         ('Height h [mm]', result['height_mm']),
         ('Flank angle [deg]', result['phi_deg']),
         ('Wall thickness [mm]', thickness),
-        ('Calculated outer-fibre strain [%]', result['cosine_strain_excel_pct']),
     )
     lines = [
         f'{label}: {value:.2f}' if value is not None else f'{label}: Not applicable or not provided'
         for label, value in fields
     ]
     lines.append('l2 is the horizontal endpoint span of the neutral fibre.')
-    lines.append('Crack-risk comparison requires the illustrated report.')
+    for method, radius, strain in (
+        ('Legacy estimate', result['cosine_radius_excel_mm'], result['cosine_strain_excel_pct']),
+        ('Cosine curvature', result['cosine_radius_corrected_mm'], result['cosine_strain_corrected_pct']),
+    ):
+        radius_text = 'unbounded (flat cosine)' if radius is None else _cosine_number(radius, 'mm')
+        strain_text = 'not calculated (no thickness)' if strain is None else _cosine_number(strain, '%')
+        lines.append(f'{method}: R = {radius_text}, outer-fibre strain = {strain_text}')
+    lines.extend((
+        'Both strains are model estimates.',
+        'Fracture screening uses the legacy estimate in the illustrated report.',
+        'Actual cracking requires application-specific validation.',
+    ))
     return '\r\n'.join(lines)
 
 

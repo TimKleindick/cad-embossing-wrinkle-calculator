@@ -42,11 +42,11 @@ The validated range is `0.001 <= l1,l2 <= 1e6`, `l2 <= l1 <= 2*l2`, and optional
 
 ## 5. Radius and simplified strain
 
-The `check cracks` worksheet reports `r_excel=l2²/(2*pi²*A)`. The calculation exposes this value as the **Excel estimate**. The derivative `y''(0)=4*pi²*A/l2²` gives `r_correct=l2²/(4*pi²*A)`, which the calculation exposes separately as the **corrected cosine radius**. The Excel radius is exactly twice the corrected radius.
+For `y(x)=a*(1-cos(2*pi*x/l2))`, `a` is half the full cosine height and is the amplitude `A` from section 2. The crest is at `x=l2/2`, where `y'=0` and `|y''|=4*pi²*a/l2²`. This is a maximum of `|y''|/(1+y'^2)^(3/2)`, so the local minimum radius is `l2²/(4*pi²*a)`, shown as **Cosine curvature**. The workbook's `check cracks` worksheet uses `l2²/(2*pi²*a)`, shown as **Legacy estimate**. The crest detail draws both circle segments on the same scale, tangent to the sampled cosine at the crest. The smaller circle matches its local curvature. The legacy circle has twice the radius and shares the tangency.
 
 Optional strain in percent is `100*t/(2*r)`. This simplified estimate omits flow curves, neutral-axis shifts, tool friction, thickness changes, prior plastic deformation, and multiaxial stresses. Crack risk, manufacturability, and approval require separate assessment.
 
-The illustrated CAD report displays the existing cosine strain estimate using `r_excel`. It compares the unrounded estimate with the manually entered fracture elongation A (%). The report screens below 70% of that value as low, from 70% to below 100% as critical, and at or above 100% as high. These thresholds are a user-defined screening rule. DIN EN 755-2 specifies mechanical properties for aluminium extrusions. The input must come from an applicable tensile test or a value for the applicable product dimensions, alloy and temper. [DIN EN 755-2:2025](https://www.dinmedia.de/en/standard/din-en-755-2/393018811)
+The illustrated CAD report displays both cosine estimates. Fracture screening compares the unrounded **Legacy estimate** strain with the manually entered fracture elongation A (%). The report screens below 70% of that value as low, from 70% to below 100% as critical, and at or above 100% as high. These thresholds are a user-defined screening rule. DIN EN 755-2 specifies mechanical properties for aluminium extrusions. The input must come from an applicable tensile test or a value for the applicable product dimensions, alloy and temper. [DIN EN 755-2:2025](https://www.dinmedia.de/en/standard/din-en-755-2/393018811)
 
 ## 6. Result fields and common references
 
