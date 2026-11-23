@@ -50,12 +50,12 @@ In **Cosine bending estimate**, check the minimum cosine radius and estimated ou
 
 ## 4. Try cancellation and other inputs
 
-- **Cancel** or an empty value ends the run before calculation. CATIA's input box reports a blank confirmation and a cancellation the same way.
-- **No** at the wall thickness prompt calculates the cosine radius without strain. **Cancel** ends the run. **Yes** requires a wall thickness value.
-- Try `29 / 30`, text in a length field, or negative thickness. The calculator should show an error without a success report. Supported lengths are 0.001 to 1,000,000 mm with `l2 <= l1 <= 2*l2`. Optional wall thickness ranges from 0 to 1,000,000 mm.
-- Try `30 / 30` with thickness off. The flat profile has no finite cosine radius. With thickness off, strain is unavailable. With thickness supplied, it is zero.
-- Try `80 / 60 / 4`. Absolute lengths double and angles, relative errors and strain stay the same.
-- Verify that CATIA is available after the report opens. Run the macro again and cancel after the first input. Then restart CATIA, check the directory registration, and verify that the macro leaves all geometry and document state unchanged.
+- Select **Cancel** or close the input window to end the run without a report. In the one-box fallback, **Cancel** or submitting a completely blank box also ends the run.
+- Clear **Wall thickness** to calculate the cosine radius without a strain estimate. **Elongation at fracture A [%]** is also optional. For the one-box fallback, use `40;30;;` to leave both blank or `40;30;2;24,5` to provide both.
+- Try l1 = `29` and l2 = `30`, text in a length field, or negative thickness. The form keeps the fields open and shows an error so you can correct them. With the one-box fallback, dismiss the error and run the macro again. Supported lengths are 0.001 to 1,000,000 mm with `l2 <= l1 <= 2*l2`. Optional wall thickness ranges from 0 to 1,000,000 mm.
+- Try l1 = `30` and l2 = `30` with **Wall thickness** blank. The flat profile has no finite cosine radius and, without thickness, no strain value. With thickness entered, the strain estimate is zero.
+- Try l1 = `80`, l2 = `60`, and **Wall thickness** = `4`. Absolute lengths double and angles, relative errors, and strain stay the same.
+- Verify that CATIA is available after the report opens. Run the macro again and cancel the input window before calculating. Then restart CATIA, check the directory registration, and verify that the macro leaves all geometry and document state unchanged.
 
 ## 5. Troubleshoot the workstation
 
@@ -65,10 +65,10 @@ In **Cosine bending estimate**, check the minimum cosine radius and estimated ou
 | CATIA requests a project or form import | Open the directory macro library and select the standalone file. |
 | `ScriptingERR_1002` at `Option Explicit` on line 2 | Replace the older copy in the registered macro directory with the current raw file. `Option Explicit` should be on line 1. |
 | Script engine unavailable or policy blocks execution | Give IT the full message, CATIA build, service pack or hotfix, and Windows version. Ask about the supported engine and allowed macro configuration. |
-| Input box is hidden | Check the taskbar and **Alt+Tab**. Focus and modality require verification in the CATIA host. |
+| Input window is hidden | Check the taskbar and **Alt+Tab**. Focus and modality require verification in the CATIA host. |
 | Text dialogs appear in place of the profile | Check the Windows default application for HTML and whether CATIA can write to the temporary directory and open that application. |
 | Input is rejected | Verify the numeric format, valid ranges, and `l2 <= l1 <= 2*l2`. |
-| The strain value is missing | Choose **Yes** at the wall thickness prompt and enter a value. **No** leaves the estimate blank. |
+| The strain value is missing | Enter a value in **Wall thickness** in the input window (the third value in the one-box fallback). If you leave it blank, no strain is calculated. |
 
 Record the commit, CATIA build, service pack or hotfix, Windows version, macro permissions, inputs, results, browser launch, cancellation, and restart behavior. Verify that the macro leaves document geometry unchanged.
 
