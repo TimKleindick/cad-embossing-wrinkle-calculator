@@ -30,7 +30,7 @@ Add the directory once and reuse it from the macro dialog. Check whether your R3
 ## 3. Check the illustrated results
 
 1. Enter `40` for **Undeformed wall length l1** and `30` for **Deformed wall length l2 (neutral fibre)**. The calculator uses `l1` as the target length along the cosine and `l2` as the horizontal span between the endpoints of the deformed neutral-fibre profile.
-2. Enter `2` in **Wall thickness**, optionally enter **Elongation at fracture A [%]** (for example `24,5`), and select **Calculate**. Clear the optional thickness field for geometry only. A is a tensile-test reference only, not a cracking limit; it does not change the calculation. Use a decimal point or comma without grouping separators, units, or exponents. If the one-box fallback appears, enter `40;30;2;24,5` or `40;30;;` with both optional values blank.
+2. Enter `2` in **Wall thickness**, optionally enter **Elongation at fracture A [%]** (for example `24,5`), and select **Calculate**. Clear the optional thickness field for geometry only. **A [%]** is tensile-test elongation at fracture, not a geometric dimension or a cracking limit. The form schematic labels **L1** along the developed material, **L2** across the projected endpoint span (chord), and **t** through the wall. The plain one-box fallback describes the inputs in text instead. Use a decimal point or comma without grouping separators, units, or exponents. If the one-box fallback appears, enter `40;30;2;24,5` or `40;30;;` with both optional values blank.
 3. The Windows default browser opens **Wrinkle geometry**, the same offline English report as NX. The sketch labels the three circular arcs with their common radius. The report HTML remains in the Windows temporary directory. If launch fails, the macro shows text results using the Windows number locale.
 4. Open **More information** to see the length and shape comparison. The first row shows the entered `l1`. The relative length deviation still compares the fitted polyline with `l1`.
 
@@ -46,7 +46,7 @@ Add the directory once and reuse it from the macro dialog. Check whether your R3
 | RMS and maximum sampled vertical shape deviations | 0.10 / 0.18 mm |
 | Cosine curvature at the crest | 3.71 mm / 26.93% |
 
-In **Cosine bending estimate**, check the minimum cosine radius and estimated outer-fibre bending strain. The text fallback shows the same estimate. The radius is not the fitted circular-arc radius. The simplified bending estimate does not predict cracks or assign a fracture risk band.
+In **Cosine bending estimate**, check the minimum cosine radius and estimated outer-fibre bending strain. The text fallback shows the same estimate. The radius is not the fitted circular-arc radius. When both thickness and A are supplied, the report also shows **estimated strain minus A** in percentage points. For example, 26.93% strain and A = 24.50% give **+2.43 percentage points**. Exceeding A flags potential cracking risk under this simplified check; at or below A only means that the entered reference was not exceeded. This is not a crack prediction or material approval.
 
 ## 4. Try cancellation and other inputs
 

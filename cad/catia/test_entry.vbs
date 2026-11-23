@@ -33,7 +33,7 @@ Sub AssertCosineText(ByVal textResult, ByVal exactRadius, ByVal exactStrain)
 End Sub
 
 Dim sample, value, caught, fake, success, localeId, previousLocale, restored
-Dim exactRadius, exactStrain, zeroStrain, flatRadius, missingStrain
+Dim exactRadius, exactStrain, zeroStrain, flatRadius, missingStrain, decimalPoint
 flatRadius="unbounded (flat cosine)"
 missingStrain="not calculated (no thickness)"
 For Each localeId In Array(1033,1031)
@@ -87,6 +87,13 @@ For Each localeId In Array(1033,1031)
     success=WrinkleRun(fake)
     Assert success,"reference value accepted without affecting geometry"
     Assert InStr(fake.outputs,"Elongation at fracture A: ")>0 And InStr(fake.outputs,"not a cracking limit")>0,"reference caveat"
+    decimalPoint = Mid(CStr(0.5), 2, 1)
+    Assert InStr(fake.outputs,"+2" & decimalPoint & "43 percentage points")>0,"positive strain minus A"
+    Assert InStr(fake.outputs,"Potential cracking risk under this simplified check")>0,"exceeded reference flags potential risk"
+    Assert InStr(WStrainComparison(25,25),"0" & decimalPoint & "00 percentage points")>0,"equal reference"
+    Assert InStr(WStrainComparison(25,26),"-1" & decimalPoint & "00 percentage points")>0,"negative strain minus A"
+    Assert InStr(WStrainComparison(25,26),"at or below the entered reference")>0,"non-exceeded reference"
+    Assert WStrainComparison(Empty,24.5)="" And WStrainComparison(25,Empty)="","missing input skips comparison"
     Call AssertCosineText(fake.outputs,exactRadius,exactStrain)
     Set fake=New FixtureDialogs
     fake.answer="30;30;;"

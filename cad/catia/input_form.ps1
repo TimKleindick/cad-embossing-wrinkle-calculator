@@ -5,7 +5,7 @@ Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'Wrinkle Geometry - Input'
-$form.ClientSize = New-Object System.Drawing.Size -ArgumentList 510, 252
+$form.ClientSize = New-Object System.Drawing.Size -ArgumentList 770, 252
 $form.AutoScaleMode = 'Dpi'
 $form.FormBorderStyle = 'FixedDialog'
 $form.StartPosition = 'CenterScreen'
@@ -41,6 +41,39 @@ $entries = @(
         $entry
     }
 )
+# The generator supplies exactly the same dimension paths as the NX dialog.
+$inputSketch = '{{INPUT_SKETCH}}' | ConvertFrom-Json
+$sketchBox = New-Object System.Windows.Forms.PictureBox
+$sketchBox.Name = 'InputSketch'
+$sketchBox.AccessibleName = 'Input sketch: L1 follows the profile, L2 is the chord, and t is the wall thickness'
+$sketchBox.BackColor = [System.Drawing.SystemColors]::Window
+$sketchBox.SetBounds(513, 12, 243, 122)
+$form.Controls.Add($sketchBox)
+$sketchBox.Add_Paint({
+    param($sender, $event)
+    $g = $event.Graphics
+    $scale = [Math]::Min($sender.Width / $inputSketch.width, $sender.Height / $inputSketch.height)
+    $g.TranslateTransform([single](($sender.Width - $inputSketch.width * $scale) / 2),
+                          [single](($sender.Height - $inputSketch.height * $scale) / 2))
+    $g.ScaleTransform([single]$scale, [single]$scale)
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    foreach ($pathGroup in $inputSketch.paths.PSObject.Properties) {
+        foreach ($path in $pathGroup.Value) {
+            for ($i = 1; $i -lt $path.Count; $i++) {
+                $a = $path[$i - 1]
+                $b = $path[$i]
+                $g.DrawLine([System.Drawing.SystemPens]::WindowText,
+                            [single]$a[0], [single]$a[1], [single]$b[0], [single]$b[1])
+            }
+        }
+    }
+    foreach ($label in $inputSketch.labels.PSObject.Properties) {
+        $g.DrawString($label.Name, $form.Font, [System.Drawing.SystemBrushes]::WindowText,
+                      [single]$label.Value[0], [single]$label.Value[1])
+    }
+})
+$legend = "L1 = developed material length`r`nL2 = projected endpoint length (chord)`r`nt = wall thickness`r`nA [%] = tensile elongation at fracture`r`nSchematic, not to scale"
+$null = Add-Label $legend 513 139 243 74
 $null = Add-Label 'Use a decimal point or comma. Leave optional fields blank if not provided.' 14 151 481 24
 $errorLabel = Add-Label '' 14 174 481 38
 $errorLabel.ForeColor = [System.Drawing.Color]::DarkRed

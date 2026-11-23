@@ -240,7 +240,10 @@ REPORT_TEMPLATE = (
     '<tr><th scope="row">Estimated outer-fibre bending strain</th><td class="value" id="curvature-strain"></td></tr>\n'
     '</tbody><tbody id="fracture-reference" hidden>\n'
     '<tr><th scope="row">Elongation at fracture A (reference only)</th><td class="value" id="a-reference-value"></td></tr>\n'
+    '</tbody><tbody id="strain-comparison" hidden>\n'
+    '<tr><th scope="row">Estimated strain minus A</th><td class="value" id="strain-delta"></td></tr>\n'
     '</tbody></table>\n'
+    '<p class="note" id="strain-assessment" hidden></p>\n'
     '<p class="note" id="fracture-note" hidden>Tensile-test elongation at fracture A is not a cracking limit for this bend.</p>\n'
     '<p class="note">The estimate uses the radius at maximum cosine curvature in the simplified bending model <var>t</var>/(2<var>R</var>). This is not a crack prediction or material approval.</p>\n'
     '</section>\n'
@@ -303,6 +306,18 @@ REPORT_TEMPLATE = (
     "  document.getElementById('a-reference-value').textContent = curvatureValue(elongationAtFracture, '%');\n"
     "  document.getElementById('fracture-reference').hidden = false;\n"
     "  document.getElementById('fracture-note').hidden = false;\n"
+    '}\n'
+    'if (curvatureStrain !== null && elongationAtFracture !== null) {\n'
+    '  const delta = curvatureStrain - elongationAtFracture;\n'
+    "  const sign = delta > 0 ? '+' : delta < 0 ? '-' : '';\n"
+    "  document.getElementById('strain-delta').textContent = sign + curvatureValue(Math.abs(delta), 'percentage points');\n"
+    "  document.getElementById('strain-comparison').hidden = false;\n"
+    "  const assessment = document.getElementById('strain-assessment');\n"
+    '  assessment.hidden = false;\n'
+    '  assessment.textContent = delta > 0\n'
+    "    ? 'Estimate exceeds the entered reference. Potential cracking risk under this simplified check.'\n"
+    "    : 'Estimate is at or below the entered reference.';\n"
+    "  if (delta > 0) assessment.classList.add('warning');\n"
     '}\n'
     "const canvas = document.getElementById('profile');\n"
     "const ctx = canvas.getContext('2d');\n"
@@ -413,6 +428,7 @@ REPORT_TEMPLATE = (
     '</body>\n'
     '</html>\n'
 )
+INPUT_SKETCH = {'width': 260, 'height': 132, 'paths': {'profile': [[[20, 78], [54, 78], [76, 71], [103, 48], [120, 41], [140, 41], [157, 48], [184, 71], [206, 78], [245, 78]], [[20, 89], [54, 89], [80, 81], [108, 58], [122, 52], [138, 52], [152, 58], [180, 81], [206, 89], [245, 89]], [[20, 78], [20, 89]], [[245, 78], [245, 89]]], 'L1': [[[20, 66], [54, 66], [70, 60], [96, 38], [119, 29], [141, 29], [164, 38], [190, 60], [206, 66], [245, 66]], [[26, 62], [20, 66], [26, 70]], [[239, 62], [245, 66], [239, 70]]], 'L2': [[[20, 94], [20, 115]], [[245, 94], [245, 115]], [[20, 109], [245, 109]], [[27, 105], [20, 109], [27, 113]], [[238, 105], [245, 109], [238, 113]]], 't': [[[224, 78], [224, 89]], [[221, 81], [224, 78], [227, 81]], [[221, 86], [224, 89], [227, 86]]]}, 'labels': {'L1': [122, 7], 'L2': [122, 114], 't': [232, 79]}}
 
 """Windows dialog adapter for an inlined NX Python journal; NX integration untested.
 
@@ -454,6 +470,20 @@ def _cosine_number(value, unit):
     return f'{value:.2f} {unit}'
 
 
+def strain_comparison(strain, fracture_elongation):
+    """Screen a computed strain against the entered coupon result, not a failure criterion."""
+    if strain is None or fracture_elongation is None:
+        return None
+    delta = strain - fracture_elongation
+    sign = '+' if delta > 0 else '-' if delta < 0 else ''
+    magnitude = _cosine_number(abs(delta), 'percentage points')
+    assessment = (
+        'Estimate exceeds the entered reference. Potential cracking risk under this simplified check.'
+        if delta > 0 else 'Estimate is at or below the entered reference.'
+    )
+    return f'Strain minus A: {sign}{magnitude}. {assessment}'
+
+
 def format_report(result, thickness=None, fracture_elongation=None):
     fields = (
         ('Undeformed wall length l1 [mm]', result['l1_mm']),
@@ -475,6 +505,9 @@ def format_report(result, thickness=None, fracture_elongation=None):
     lines.append(f'Cosine curvature: R = {radius_text}, outer-fibre strain = {strain_text}')
     if fracture_elongation is not None:
         lines.append(f'Elongation at fracture A: {fracture_elongation:.2f} % (reference; not a cracking limit)')
+    comparison = strain_comparison(strain, fracture_elongation)
+    if comparison is not None:
+        lines.append(comparison)
     lines.append('The cosine bending estimate is not a crack prediction or material approval.')
     return '\r\n'.join(lines)
 
@@ -515,10 +548,10 @@ def open_illustrated_report(result, thickness, opener=None, *, fracture_elongati
 
 
 def dialog_template():
-    """Standard DLGTEMPLATE + 13 actual controls; DWORD aligned as Win32 requires."""
+    """Standard DLGTEMPLATE + 15 actual controls; DWORD aligned as Win32 requires."""
     def wide(text): return (text+'\0').encode('utf-16-le')
     style=0x80000000|0x00c00000|0x00080000|0x40|0x80|0x800
-    data=struct.pack('<IIHhhhh',style,0,13,0,0,468,356)
+    data=struct.pack('<IIHhhhh',style,0,15,0,0,468,375)
     data+=b'\0\0\0\0'+wide(WINDOW_TITLE)+struct.pack('<H',9)+wide('Segoe UI')
     child=0x50000000
     tab=0x10000
@@ -535,8 +568,12 @@ def dialog_template():
         (105,0x81,'',204,106,90,16,tab|0x80,0x200),
         (1,0x80,'Calculate',304,10,68,20,tab|1,0),
         (2,0x80,'Close',382,10,72,20,tab,0),
-        (10004,0x82,'SOURCE PREVIEW - NX runtime and installation untested',12,134,440,14,0,0),
-        (201,0x81,'Calculate opens the illustrated report. Use a decimal point or comma.',12,156,442,186,
+        (10006,0x82,'Schematic: L1 follows the profile, L2 is the chord, t is the wall thickness',
+         304,33,150,82,0xD,0),  # SS_OWNERDRAW sends WM_DRAWITEM
+        (10007,0x82,'L1 = developed material length\r\nL2 = projected endpoint length (chord)\r\n'
+         't = wall thickness\r\nA [%] = tensile elongation at fracture\r\nSchematic, not to scale',304,118,150,52,0,0),
+        (10004,0x82,'SOURCE PREVIEW - NX runtime and installation untested',12,150,287,14,0,0),
+        (201,0x81,'Calculate opens the illustrated report. Use a decimal point or comma.',12,175,442,186,
          tab|0x4|0x40|0x800|0x200000|0x100000|0x80,0x200),
     ]
     for ident,atom,text,x,y,w,h,flags,extended in controls:
@@ -553,6 +590,7 @@ def run_dialog(owner=None, open_file=None):
     from ctypes import wintypes as w
     user=ctypes.WinDLL('user32',use_last_error=True)
     kernel=ctypes.WinDLL('kernel32',use_last_error=True)
+    gdi=ctypes.WinDLL('gdi32',use_last_error=True)
     callback_type=ctypes.WINFUNCTYPE(ctypes.c_ssize_t,w.HWND,w.UINT,w.WPARAM,w.LPARAM)
     # Explicit pointer-sized types prevent HWND/callback truncation in 64-bit NX.
     user.DialogBoxIndirectParamW.argtypes=[w.HINSTANCE,ctypes.c_void_p,w.HWND,callback_type,w.LPARAM]
@@ -564,6 +602,64 @@ def run_dialog(owner=None, open_file=None):
     user.IsDlgButtonChecked.argtypes=[w.HWND,ctypes.c_int];user.IsDlgButtonChecked.restype=w.UINT
     user.GetForegroundWindow.restype=w.HWND
     kernel.GetModuleHandleW.argtypes=[w.LPCWSTR];kernel.GetModuleHandleW.restype=w.HMODULE
+    class DrawItem(ctypes.Structure):
+        _fields_ = [
+            ('control_type', w.UINT), ('control_id', w.UINT), ('item_id', w.UINT),
+            ('action', w.UINT), ('state', w.UINT), ('window', w.HWND),
+            ('dc', w.HDC), ('rect', w.RECT), ('item_data', ctypes.c_size_t),
+        ]
+
+    user.GetSysColorBrush.argtypes = [ctypes.c_int]
+    user.GetSysColorBrush.restype = w.HBRUSH
+    user.GetSysColor.argtypes = [ctypes.c_int]
+    user.GetSysColor.restype = w.DWORD
+    user.FillRect.argtypes = [w.HDC, ctypes.POINTER(w.RECT), w.HBRUSH]
+    gdi.MoveToEx.argtypes = [w.HDC, ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
+    gdi.LineTo.argtypes = [w.HDC, ctypes.c_int, ctypes.c_int]
+    gdi.SetBkMode.argtypes = [w.HDC, ctypes.c_int]
+    gdi.SetTextColor.argtypes = [w.HDC, w.DWORD]
+    gdi.TextOutW.argtypes = [w.HDC, ctypes.c_int, ctypes.c_int, w.LPCWSTR, ctypes.c_int]
+    gdi.GetStockObject.argtypes = [ctypes.c_int]
+    gdi.GetStockObject.restype = w.HGDIOBJ
+    gdi.SelectObject.argtypes = [w.HDC, w.HGDIOBJ]
+    gdi.SelectObject.restype = w.HGDIOBJ
+    gdi.CreatePen.argtypes = [ctypes.c_int, ctypes.c_int, w.DWORD]
+    gdi.CreatePen.restype = w.HPEN
+    gdi.DeleteObject.argtypes = [w.HGDIOBJ]
+
+    def draw_sketch(item):
+        bounds = item.rect
+        width, height = bounds.right - bounds.left, bounds.bottom - bounds.top
+        scale = min(width / INPUT_SKETCH['width'], height / INPUT_SKETCH['height'])
+        x0 = bounds.left + (width - INPUT_SKETCH['width'] * scale) / 2
+        y0 = bounds.top + (height - INPUT_SKETCH['height'] * scale) / 2
+
+        def pixel(point):
+            return round(x0 + point[0] * scale), round(y0 + point[1] * scale)
+
+        user.FillRect(item.dc, ctypes.byref(bounds), user.GetSysColorBrush(5))  # COLOR_WINDOW
+        colour = user.GetSysColor(8)  # COLOR_WINDOWTEXT
+        pen = gdi.CreatePen(0, 1, colour)
+        old_pen = gdi.SelectObject(item.dc, pen)
+        old_font = gdi.SelectObject(item.dc, gdi.GetStockObject(17))  # DEFAULT_GUI_FONT
+        old_background = gdi.SetBkMode(item.dc, 1)  # TRANSPARENT
+        old_colour = gdi.SetTextColor(item.dc, colour)
+        try:
+            for group in INPUT_SKETCH['paths'].values():
+                for line in group:
+                    x, y = pixel(line[0])
+                    gdi.MoveToEx(item.dc, x, y, None)
+                    for point in line[1:]:
+                        gdi.LineTo(item.dc, *pixel(point))
+            for label, point in INPUT_SKETCH['labels'].items():
+                gdi.TextOutW(item.dc, *pixel(point), label, len(label))
+        finally:
+            gdi.SetTextColor(item.dc, old_colour)
+            gdi.SetBkMode(item.dc, old_background)
+            gdi.SelectObject(item.dc, old_font)
+            gdi.SelectObject(item.dc, old_pen)
+            gdi.DeleteObject(pen)
+
     failures=[]
 
     def read_text(hwnd,ident):
@@ -574,6 +670,9 @@ def run_dialog(owner=None, open_file=None):
     @callback_type
     def callback(hwnd,message,wp,lp):
         try:
+            if message == 0x2B and wp == 10006:  # WM_DRAWITEM for the input sketch only
+                draw_sketch(ctypes.cast(lp, ctypes.POINTER(DrawItem)).contents)
+                return 1
             if message==0x110:  # WM_INITDIALOG
                 return 1
             if message==0x10 or (message==0x111 and (wp&0xffff)==2):

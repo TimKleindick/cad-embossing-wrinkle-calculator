@@ -79,7 +79,7 @@ def main():
             try:
                 def window():
                     current = user.FindWindowW(None, TITLE)
-                    if current and len(controls(current)) >= 12:
+                    if current and len(controls(current)) >= 14:
                         return current
                     if process.poll() is not None:
                         raise AssertionError(f'Form failed to start: {process.communicate()}')
@@ -90,6 +90,11 @@ def main():
                 edits = sorted((y, child) for cls, label, y, child in items if '.EDIT.' in cls.upper())
                 buttons = {label: child for cls, label, y, child in items if '.BUTTON.' in cls.upper()}
                 assert len(edits) == 4, items
+                assert any(
+                    all(s in label for s in ('L1 = developed', 'L2 = projected', 't = wall thickness',
+                                              'A [%] = tensile'))
+                    for _, label, _, _ in items
+                ), items
                 assert 'Calculate' in buttons and 'Cancel' in buttons, items
 
                 if cancel:

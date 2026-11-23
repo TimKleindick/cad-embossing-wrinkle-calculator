@@ -12,7 +12,9 @@ report runs offline.
   If Windows PowerShell is blocked, enter all values in a single native prompt.
 
 Both windows accept l1, l2, wall thickness, and optional elongation at fracture A [%].
-A is a report-only tensile-test reference, not a cracking limit.
+The input forms sketch developed length L1, projected length L2, and wall thickness t.
+When both thickness and A are entered, the report compares estimated strain with A in
+percentage points. A is a tensile-test reference, not a cracking limit.
 
 Each startup file contains its calculation core and the report template. NX keeps a copy
 of the results in the dialog. CATIA shows text results if the browser report cannot
