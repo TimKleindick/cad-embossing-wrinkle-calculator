@@ -11,7 +11,8 @@ Class WrinkleDialogs
         Else
             ReadInputs = InputBox("Enter l1 [mm]; l2 [mm]; wall thickness [mm]; elongation at fracture A [%], in that order." & vbCrLf & _
                 "For example: 40;30;2;24,5. Use a decimal point or comma without grouping." & vbCrLf & _
-                "Leave either optional field blank (example: 40;30;;).", _
+                "Leave either optional field blank (example: 40;30;;)." & vbCrLf & _
+                "L1: developed length. L2: projected endpoint length (chord). A: tensile elongation at fracture.", _
                 "Wrinkle Geometry - Input", "40;30;2;")
         End If
     End Function
@@ -193,8 +194,25 @@ Function WCosineEstimateText(ByVal radius,ByVal strain)
     WCosineEstimateText="Cosine curvature: R = " & radiusText & ", outer-fibre strain = " & strainText
 End Function
 
+Function WStrainComparison(ByVal strain, ByVal fractureElongation)
+    Dim delta, sign, assessment
+    WStrainComparison = ""
+    If IsEmpty(strain) Or IsEmpty(fractureElongation) Then Exit Function
+    delta = strain - fractureElongation
+    sign = ""
+    If delta > 0 Then
+        sign = "+"
+        assessment = "Estimate exceeds the entered reference. Potential cracking risk under this simplified check."
+    Else
+        If delta < 0 Then sign = "-"
+        assessment = "Estimate is at or below the entered reference."
+    End If
+    WStrainComparison = "Strain minus A: " & sign & WCosineNumber(Abs(delta), "percentage points") & _
+                        ". " & assessment
+End Function
+
 Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness, ByVal fractureElongation)
-    Dim report
+    Dim report, comparison
     report="SOURCE PREVIEW - CATIA runtime and import untested" & vbCrLf
     report=report & "Undeformed wall length l1: " & WEntryNumber(l1,"mm") & vbCrLf
     report=report & "Deformed wall length l2 (neutral fibre): " & WEntryNumber(l2,"mm") & vbCrLf
@@ -208,6 +226,8 @@ Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness, ByVal fractureEl
         report=report & "Elongation at fracture A: " & WEntryNumber(fractureElongation,"%") & _
             " (reference; not a cracking limit)" & vbCrLf
     End If
+    comparison = WStrainComparison(v(14), fractureElongation)
+    If comparison <> "" Then report = report & comparison & vbCrLf
     WResultText=report & "The cosine bending estimate is not a crack prediction or material approval."
 End Function
 

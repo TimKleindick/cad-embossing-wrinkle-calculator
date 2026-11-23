@@ -69,7 +69,7 @@ runpy.run_path('NX_WrinkleCalculator.py')['run_dialog'](owner=0, open_file=captu
                 if candidate:
                     user.GetWindowThreadProcessId(candidate,ctypes.byref(pid))
                     # FindWindow can return the parent before Windows creates its controls.
-                    controls = (101, 102, 103, 104, 105, 1, 201)
+                    controls = (101, 102, 103, 104, 105, 1, 201, 10006, 10007)
                     if pid.value==process.pid and all(user.GetDlgItem(candidate, control) for control in controls):
                         hwnd=candidate
                         break
@@ -97,6 +97,12 @@ runpy.run_path('NX_WrinkleCalculator.py')['run_dialog'](owner=0, open_file=captu
             assert 'Wall thickness [mm]: 2.00' in report,report
             assert_cosine_text(report, '3.71 mm', '26.93 %')
             assert 'Elongation at fracture A: 24.50 % (reference; not a cracking limit)' in report,report
+            assert '+2.43 percentage points' in report and 'Potential cracking risk' in report,report
+            set_text(hwnd,105,'30')
+            click()
+            assert '-3.07 percentage points' in text() and 'at or below the entered reference' in text(),text()
+            set_text(hwnd,105,'24,5')
+            click()
             for omitted in ('Cosine amplitude', 'Straight length', 'length deviation', 'Corrected cosine'):
                 assert omitted not in report,report
             html = (Path(tmp) / 'captured-report.html').read_text(encoding='ascii')
@@ -108,7 +114,7 @@ runpy.run_path('NX_WrinkleCalculator.py')['run_dialog'](owner=0, open_file=captu
             assert data['elongationAtFracture'] == 24.5
             set_text(hwnd,105,'')
             click()
-            assert 'Elongation at fracture A' not in text(),text()
+            assert 'Elongation at fracture A' not in text() and 'percentage points' not in text(),text()
             # German decimal is accepted independently of machine locale.
             set_text(hwnd,101,'40,0');click()
             assert 'Undeformed wall length l1 [mm]: 40.00' in text(),text()

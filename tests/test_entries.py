@@ -27,7 +27,7 @@ class EntryTests(unittest.TestCase):
         data=ui.dialog_template()
         import struct
         self.assertGreater(len(data),300)
-        self.assertEqual(struct.unpack_from('<H',data,8)[0],13)
+        self.assertEqual(struct.unpack_from('<H',data,8)[0],15)
         for label in ['Undeformed wall length l1 [mm]', 'Deformed wall length l2 (neutral fibre) [mm]', 'Elongation at fracture A [%] (optional)', 'Calculate', 'Close']:
             self.assertIn(label.encode('utf-16-le'),data)
 
@@ -51,6 +51,92 @@ class EntryTests(unittest.TestCase):
         self.assertEqual(source.splitlines()[0], 'Option Explicit')
         self.assertNotRegex(source, r'(?im)^\s*Language\s*=')
         self.assertEqual((ROOT / path).read_bytes(), source.encode('ascii'))
+
+    def test_both_generated_forms_embed_same_dimension_sketch(self):
+        import json
+        from tools.build_entries import generated_sources
+        paths = generated_sources(ROOT)
+        nx = paths['ready-to-run/NX_WrinkleCalculator.py'].decode('utf-8')
+        catia = paths['ready-to-run/CATIA_WrinkleCalculator.CATScript'].decode('ascii')
+        sketch = json.loads((ROOT / 'cad/input_sketch.json').read_text())
+        self.assertEqual(set(sketch['labels']), {'L1', 'L2', 't'})
+        self.assertEqual(set(sketch['paths']), {'profile', 'L1', 'L2', 't'})
+        self.assertIn('A [%] = tensile elongation at fracture', nx)
+        self.assertIn('A [%] = tensile elongation at fracture', catia)
+        self.assertIn('WM_DRAWITEM', nx)
+        self.assertIn('$sketchBox.Add_Paint', catia)
+        self.assertIn(json.dumps(sketch, separators=(',', ':')).replace('"', '""'), catia)
+        self.assertIn('INPUT_SKETCH =', nx)
+
+    def test_report_assesses_signed_difference_only_with_both_inputs(self):
+        import json
+        import re
+        import shutil
+        node = shutil.which('node')
+        if node is None:
+            self.skipTest('Node.js is needed to exercise shared report logic')
+        module = runpy.run_path(str(ROOT / 'ready-to-run/NX_WrinkleCalculator.py'))
+        result = module['calculate'](40, 30, 2)
+        strain = result['cosine_strain_corrected_pct']
+        script = module['REPORT_TEMPLATE'].split('<script>\n', 1)[1].split('const canvas = ', 1)[0]
+        cases = [(2, strain - 2, '+2.00', True), (2, strain, '0.00', False),
+                 (2, strain + 1, '-1.00', False), (2, None, None, False),
+                 (None, strain, None, False)]
+        harness = r'''
+const assert = require('node:assert/strict');
+function element() {
+  return {
+    hidden: true, textContent: '', insertRow: element, insertCell: element,
+    append() {}, classList: { add() {} }
+  };
+}
+const elements = new Map();
+const document = {
+  getElementById(id) {
+    if (!elements.has(id)) elements.set(id, element());
+    return elements.get(id);
+  },
+  createElement: element
+};
+document.getElementById('result-data').textContent = JSON.stringify(payload);
+'''
+        assertions = r'''
+const actual = document.getElementById('strain-delta').textContent;
+const assessment = document.getElementById('strain-assessment');
+assert.equal(actual, expected === null ? '' : expected + ' percentage points');
+assert.equal(assessment.hidden, expected === null);
+assert.equal(document.getElementById('strain-comparison').hidden, expected === null);
+if (expected !== null) {
+  assert.match(assessment.textContent, risk ? /Potential cracking risk/ : /at or below the entered reference/);
+}
+'''
+        for t, a, expected, risk in cases:
+            with self.subTest(t=t, a=a):
+                report = module['render_illustrated_report'](module['calculate'](40, 30, t), t, a)
+                data = re.search(r'id="result-data" type="application/json">([^<]+)', report).group(1)
+                prefix = f'const payload = {data}; const expected = {json.dumps(expected)}; const risk = {json.dumps(risk)};\n'
+                proc = subprocess.run([node, '-'], input=prefix+harness+script+assertions,
+                                      capture_output=True, text=True)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+
+    def test_signed_strain_minus_elongation_on_nx_text(self):
+        module = runpy.run_path(str(ROOT / 'ready-to-run/NX_WrinkleCalculator.py'))
+        result = module['calculate'](40, 30, 2)
+        strain = result['cosine_strain_corrected_pct']
+        cases = [
+            (strain - 2, '+2.00 percentage points', 'Potential cracking risk'),
+            (strain, '0.00 percentage points', 'at or below the entered reference'),
+            (strain + 1, '-1.00 percentage points', 'at or below the entered reference'),
+        ]
+        for a, delta, assessment in cases:
+            with self.subTest(a=a):
+                report = module['format_report'](result, 2, a)
+                self.assertIn(delta, report)
+                self.assertIn(assessment, report)
+                self.assertIn('not a crack prediction', report)
+        self.assertNotIn('percentage points', module['format_report'](result, 2))
+        no_t = module['calculate'](40, 30)
+        self.assertNotIn('percentage points', module['format_report'](no_t, None, 10))
 
     def test_catscript_embeds_one_local_form_and_a_one_box_fallback(self):
         from tools.build_entries import generated_sources

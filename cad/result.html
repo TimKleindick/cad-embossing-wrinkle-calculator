@@ -58,7 +58,10 @@ The dimension values are listed in the table.
 <tr><th scope="row">Estimated outer-fibre bending strain</th><td class="value" id="curvature-strain"></td></tr>
 </tbody><tbody id="fracture-reference" hidden>
 <tr><th scope="row">Elongation at fracture A (reference only)</th><td class="value" id="a-reference-value"></td></tr>
+</tbody><tbody id="strain-comparison" hidden>
+<tr><th scope="row">Estimated strain minus A</th><td class="value" id="strain-delta"></td></tr>
 </tbody></table>
+<p class="note" id="strain-assessment" hidden></p>
 <p class="note" id="fracture-note" hidden>Tensile-test elongation at fracture A is not a cracking limit for this bend.</p>
 <p class="note">The estimate uses the radius at maximum cosine curvature in the simplified bending model <var>t</var>/(2<var>R</var>). This is not a crack prediction or material approval.</p>
 </section>
@@ -121,6 +124,18 @@ if (elongationAtFracture !== null) {
   document.getElementById('a-reference-value').textContent = curvatureValue(elongationAtFracture, '%');
   document.getElementById('fracture-reference').hidden = false;
   document.getElementById('fracture-note').hidden = false;
+}
+if (curvatureStrain !== null && elongationAtFracture !== null) {
+  const delta = curvatureStrain - elongationAtFracture;
+  const sign = delta > 0 ? '+' : delta < 0 ? '-' : '';
+  document.getElementById('strain-delta').textContent = sign + curvatureValue(Math.abs(delta), 'percentage points');
+  document.getElementById('strain-comparison').hidden = false;
+  const assessment = document.getElementById('strain-assessment');
+  assessment.hidden = false;
+  assessment.textContent = delta > 0
+    ? 'Estimate exceeds the entered reference. Potential cracking risk under this simplified check.'
+    : 'Estimate is at or below the entered reference.';
+  if (delta > 0) assessment.classList.add('warning');
 }
 const canvas = document.getElementById('profile');
 const ctx = canvas.getContext('2d');
