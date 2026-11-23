@@ -42,18 +42,12 @@ def format_report(result, thickness=None):
         for label, value in fields
     ]
     lines.append('l2 is the horizontal endpoint span of the neutral fibre.')
-    for method, radius, strain in (
-        ('Legacy estimate', result['cosine_radius_excel_mm'], result['cosine_strain_excel_pct']),
-        ('Cosine curvature', result['cosine_radius_corrected_mm'], result['cosine_strain_corrected_pct']),
-    ):
-        radius_text = 'unbounded (flat cosine)' if radius is None else _cosine_number(radius, 'mm')
-        strain_text = 'not calculated (no thickness)' if strain is None else _cosine_number(strain, '%')
-        lines.append(f'{method}: R = {radius_text}, outer-fibre strain = {strain_text}')
-    lines.extend((
-        'Both strains are model estimates.',
-        'Fracture screening uses the legacy estimate in the illustrated report.',
-        'Actual cracking requires application-specific validation.',
-    ))
+    radius = result['cosine_radius_corrected_mm']
+    strain = result['cosine_strain_corrected_pct']
+    radius_text = 'unbounded (flat cosine)' if radius is None else _cosine_number(radius, 'mm')
+    strain_text = 'not calculated (no thickness)' if strain is None else _cosine_number(strain, '%')
+    lines.append(f'Cosine curvature: R = {radius_text}, outer-fibre strain = {strain_text}')
+    lines.append('The cosine bending estimate is not a crack prediction or material approval.')
     return '\r\n'.join(lines)
 
 

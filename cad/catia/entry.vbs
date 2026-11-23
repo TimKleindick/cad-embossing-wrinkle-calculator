@@ -117,7 +117,7 @@ Function WCosineNumber(ByVal value,ByVal unit)
     WCosineNumber=mantissaText & "e" & CStr(exponent) & " " & unit
 End Function
 
-Function WCosineEstimateText(ByVal methodLabel,ByVal radius,ByVal strain)
+Function WCosineEstimateText(ByVal radius,ByVal strain)
     Dim radiusText,strainText
     If IsEmpty(radius) Then
         radiusText="unbounded (flat cosine)"
@@ -129,7 +129,7 @@ Function WCosineEstimateText(ByVal methodLabel,ByVal radius,ByVal strain)
     Else
         strainText=WCosineNumber(strain,"%")
     End If
-    WCosineEstimateText=methodLabel & ": R = " & radiusText & ", outer-fibre strain = " & strainText
+    WCosineEstimateText="Cosine curvature: R = " & radiusText & ", outer-fibre strain = " & strainText
 End Function
 
 Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness)
@@ -142,11 +142,8 @@ Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness)
     report=report & "Flank angle: " & WEntryNumber(v(3),"deg") & vbCrLf
     report=report & "Wall thickness: " & WEntryNumber(thickness,"mm") & vbCrLf
     report=report & "l2 is the horizontal endpoint span of the neutral fibre." & vbCrLf
-    report=report & WCosineEstimateText("Legacy estimate",v(10),v(13)) & vbCrLf
-    report=report & WCosineEstimateText("Cosine curvature",v(11),v(14)) & vbCrLf
-    report=report & "Both strains are model estimates." & vbCrLf
-    report=report & "Fracture screening uses the legacy estimate in the illustrated report." & vbCrLf
-    WResultText=report & "Actual cracking requires application-specific validation."
+    report=report & WCosineEstimateText(v(11),v(14)) & vbCrLf
+    WResultText=report & "The cosine bending estimate is not a crack prediction or material approval."
 End Function
 
 Function WrinkleRunChecked(ByRef ui)

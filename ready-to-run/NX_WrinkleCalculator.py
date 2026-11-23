@@ -194,17 +194,10 @@ REPORT_TEMPLATE = (
     'h2{margin:0 0 8px;font-size:1.16rem}p{margin:0;color:#465c66}\n'
     'figure,section{margin:20px 0 0;background:#fff;border:1px solid #d7e2e5;border-radius:12px;padding:18px}\n'
     '.plot{overflow-x:auto}canvas{width:100%;min-width:640px;height:auto;display:block}\n'
-    'figcaption,.detail-key{display:flex;gap:12px 26px;flex-wrap:wrap;color:#364d59;font-size:.9rem}\n'
+    'figcaption{display:flex;gap:12px 26px;flex-wrap:wrap;color:#364d59;font-size:.9rem}\n'
     '.key{display:inline-block;width:24px;margin-right:8px;border-top:3px solid #03796d;vertical-align:middle}\n'
     '.cosine{border-color:#4151aa;border-top-style:dashed}\n'
     '.straight{border-color:#a13355}\n'
-    '.legacy{border-color:#934717;border-top-style:dashed}\n'
-    '.crest-cosine{border-color:#4151aa;border-top-style:dotted}\n'
-    '.common-tangent{border-top:1px solid #647c86}\n'
-    '#crest-detail{min-width:0}\n'
-    '#crest-values{margin-top:12px}\n'
-    '#crest-values thead th{border-bottom:1px solid #e7eef0}\n'
-    '#crest-values thead th:not(:first-child){width:auto;text-align:right}\n'
     'details{margin-top:20px}summary{cursor:pointer;width:max-content;padding:8px 13px;border:1px solid #91a9af;border-radius:6px;background:#fff;font-weight:650}\n'
     'details section{margin-top:10px}\n'
     'table{width:100%;border-collapse:collapse;font-size:.94rem}\n'
@@ -212,9 +205,6 @@ REPORT_TEMPLATE = (
     'tr:last-child th,tr:last-child td{border-bottom:0}th{padding-right:12px;font-weight:600;width:30%}\n'
     'td.value{font-variant-numeric:tabular-nums;text-align:right;font-weight:650}\n'
     '.note{margin-top:10px;font-size:.87rem}.warning{color:#8d3b12;font-weight:650}\n'
-    'input{font:inherit;text-align:right;width:7rem;padding:5px;border:1px solid #91a9af;border-radius:4px}\n'
-    'input[aria-invalid="true"]{border-color:#a12323}\n'
-    '.low{color:#07665a}.critical{color:#8d3b12}.high{color:#a12323}\n'
     '@media(max-width:720px){th,td{padding:6px 3px}th{width:45%}}\n'
     '</style>\n'
     '</head>\n'
@@ -242,36 +232,14 @@ REPORT_TEMPLATE = (
     '<table aria-labelledby="geometry-title"><tbody id="geometry"></tbody></table>\n'
     '<p class="note">l<sub>2</sub> is the horizontal span between the neutral-fibre endpoints in this model.</p>\n'
     '</section>\n'
-    '<section aria-labelledby="crest-title">\n'
-    '<h2 id="crest-title">Cosine crest detail</h2>\n'
-    '<div id="crest-plot" hidden>\n'
-    '<canvas id="crest-detail" width="800" height="250" role="img" aria-label="Neutral-fibre cosine and two tangent circle segments overlaid at the crest on equal axes" aria-describedby="crest-caption"></canvas>\n'
-    '<div class="detail-key" id="crest-caption">\n'
-    '<span><i class="key crest-cosine"></i>Neutral-fibre cosine</span>\n'
-    '<span><i class="key common-tangent"></i>Common tangent at the crest</span>\n'
-    '</div>\n'
-    '<p class="note">Both circles touch at the crest. The <strong>Cosine curvature</strong> circle also matches the local curvature there. The <strong>Legacy estimate</strong> uses twice that radius for workbook compatibility. The horizontal and vertical scales are equal.</p>\n'
-    '<p class="note" id="crest-overlap" hidden>The segments nearly overlap at this scale.</p>\n'
-    '</div>\n'
-    '<p class="note" id="crest-empty" hidden></p>\n'
-    '<table id="crest-values" aria-labelledby="crest-title">\n'
-    '<thead><tr><th scope="col">Method</th><th scope="col">Radius R</th><th scope="col">Estimated outer-fibre bending strain</th></tr></thead>\n'
-    '<tbody>\n'
-    '<tr><th scope="row"><i class="key legacy"></i>Legacy estimate</th><td class="value" id="legacy-radius"></td><td class="value" id="legacy-strain"></td></tr>\n'
-    '<tr><th scope="row"><i class="key"></i>Cosine curvature</th><td class="value" id="curvature-radius"></td><td class="value" id="curvature-strain"></td></tr>\n'
-    '</tbody>\n'
-    '</table>\n'
-    '</section>\n'
     '<section aria-labelledby="strain-title">\n'
-    '<h2 id="strain-title">Strain and fracture screening</h2>\n'
+    '<h2 id="strain-title">Cosine bending estimate</h2>\n'
     '<table aria-labelledby="strain-title"><tbody>\n'
     '<tr><th scope="row">Wall thickness</th><td class="value" id="wall-thickness"></td></tr>\n'
-    '<tr><th scope="row"><label for="fracture-elongation">Fracture elongation A</label></th>\n'
-    '<td class="value"><input id="fracture-elongation" type="text" inputmode="decimal" maxlength="24" aria-describedby="fracture-source" placeholder="e.g. 15.00"> %</td></tr>\n'
-    '<tr><th scope="row">Fracture risk screening (Legacy estimate)</th><td class="value" id="fracture-band" aria-live="polite"></td></tr>\n'
+    '<tr><th scope="row">Minimum cosine radius (neutral fibre)</th><td class="value" id="curvature-radius"></td></tr>\n'
+    '<tr><th scope="row">Estimated outer-fibre bending strain</th><td class="value" id="curvature-strain"></td></tr>\n'
     '</tbody></table>\n'
-    '<p class="note" id="fracture-source">Enter the elongation from a tensile test or the applicable value from DIN EN 755-2.</p>\n'
-    '<p class="note">Both strains use the simplified bending model <var>t</var>/(2<var>R</var>). Screening compares the unrounded Legacy estimate with 70% and 100% of the entered elongation. Actual cracking and production suitability require application-specific validation.</p>\n'
+    '<p class="note">The estimate uses the radius at maximum cosine curvature in the simplified bending model <var>t</var>/(2<var>R</var>). This is not a crack prediction or material approval.</p>\n'
     '</section>\n'
     '<details>\n'
     '<summary>More information</summary>\n'
@@ -283,26 +251,11 @@ REPORT_TEMPLATE = (
     '</details>\n'
     '</main>\n'
     '<script id="result-data" type="application/json">{{DATA}}</script>\n'
-    '<script id="screening-rules">\n'
-    "'use strict';\n"
-    'function parseFractureElongation(text) {\n'
-    '  const value = text.trim();\n'
-    '  if (!/^(?:\\d+(?:[.,]\\d+)?|[.,]\\d+)$/.test(value)) return null;\n'
-    "  const number = Number(value.replace(',', '.'));\n"
-    '  return Number.isFinite(number) && number > 0 ? number : null;\n'
-    '}\n'
-    'function fractureBand(strain, elongation) {\n'
-    '  if (!Number.isFinite(strain) || strain < 0 || !Number.isFinite(elongation) || elongation <= 0) return null;\n'
-    "  if (strain >= elongation) return 'high';\n"
-    "  if (strain * 10 < elongation * 7) return 'low';\n"
-    "  return 'critical';\n"
-    '}\n'
-    '</script>\n'
     '<script>\n'
     "'use strict';\n"
     "const {l1, l2, thickness, values, fit} = JSON.parse(document.getElementById('result-data').textContent);\n"
     'const [amplitude, radius, height, angle] = values;\n'
-    'const [legacyRadius, curvatureRadius, , legacyStrain, curvatureStrain] = values.slice(10, 15);\n'
+    'const curvatureRadius = values[11], curvatureStrain = values[14];\n'
     "const format = new Intl.NumberFormat('en-GB', {minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false});\n"
     "const withUnit = (value, unit) => value === null ? '\\u2013' : `${format.format(value)} ${unit}`;\n"
     'function table(id, rows) {\n'
@@ -336,28 +289,13 @@ REPORT_TEMPLATE = (
     'const meetsTarget = Math.abs(values[7]) < 0.1;\n'
     "target.textContent = meetsTarget ? 'Length deviation is below 0.10%.' : 'Length deviation reaches or exceeds 0.10%.';\n"
     "if (!meetsTarget) target.classList.add('warning');\n"
-    "document.getElementById('wall-thickness').textContent = withUnit(thickness, 'mm');\n"
-    "const elongationInput = document.getElementById('fracture-elongation');\n"
-    "const assessment = document.getElementById('fracture-band');\n"
-    'const bandLabels = {\n'
-    "  low: 'Low (below 70% of fracture elongation)',\n"
-    "  critical: 'Critical (70% to below 100% of fracture elongation)',\n"
-    "  high: 'High (at or above fracture elongation)'\n"
-    '};\n'
-    'function updateAssessment() {\n'
-    '  const raw = elongationInput.value.trim();\n'
-    '  const elongation = parseFractureElongation(raw);\n'
-    '  const band = fractureBand(legacyStrain, elongation);\n'
-    "  const invalid = raw !== '' && elongation === null;\n"
-    "  elongationInput.setAttribute('aria-invalid', String(invalid));\n"
-    "  assessment.className = band ? `value ${band}` : 'value';\n"
-    '  if (band) assessment.textContent = bandLabels[band];\n'
-    "  else if (invalid) assessment.textContent = 'Enter a positive percentage.';\n"
-    "  else if (legacyStrain === null) assessment.textContent = 'Wall thickness required.';\n"
-    "  else assessment.textContent = 'Enter fracture elongation to assess.';\n"
+    'function curvatureValue(value, unit) {\n'
+    "  return value > 0 && value < .01 ? value.toExponential(2) + ' ' + unit : withUnit(value, unit);\n"
     '}\n'
-    "elongationInput.addEventListener('input', updateAssessment);\n"
-    'updateAssessment();\n'
+    "document.getElementById('wall-thickness').textContent = withUnit(thickness, 'mm');\n"
+    "document.getElementById('curvature-radius').textContent = curvatureRadius === null\n"
+    "  ? 'Unbounded (flat cosine)' : curvatureValue(curvatureRadius, 'mm');\n"
+    "document.getElementById('curvature-strain').textContent = curvatureValue(curvatureStrain, '%');\n"
     "const canvas = document.getElementById('profile');\n"
     "const ctx = canvas.getContext('2d');\n"
     'const scale = Math.min(650 / l2, 224 / Math.max(height, 2 * amplitude, l2 * .01));\n'
@@ -464,61 +402,6 @@ REPORT_TEMPLATE = (
     'arrowhead(right, measureY, 0, -1, blue);\n'
     "label(`l\\u2081 = ${withUnit(l1, 'mm')}`, midX, y(2 * amplitude) - lengthOffset - 8, blue);\n"
     '</script>\n'
-    '<script id="crest-detail-script">\n'
-    "'use strict';\n"
-    'const flatCosine = amplitude === 0;\n'
-    'function crestValue(value, unit) {\n'
-    '  if (!Number.isFinite(value)) return withUnit(null, unit);\n'
-    '  return value > 0 && value < .01 ? `${value.toExponential(2)} ${unit}` : withUnit(value, unit);\n'
-    '}\n'
-    "const radiusText = value => flatCosine ? 'Unbounded (flat cosine)' : crestValue(value, 'mm');\n"
-    "document.getElementById('legacy-radius').textContent = radiusText(legacyRadius);\n"
-    "document.getElementById('curvature-radius').textContent = radiusText(curvatureRadius);\n"
-    "document.getElementById('legacy-strain').textContent = crestValue(legacyStrain, '%');\n"
-    "document.getElementById('curvature-strain').textContent = crestValue(curvatureStrain, '%');\n"
-    '\n'
-    'function drawCosineCrest(canvas, span, halfHeight, legacy, exact) {\n'
-    '  const crestX = canvas.width / 2, crestY = 34;\n'
-    '  const halfSpan = Math.min(span / 4, exact * .94);\n'
-    '  // Work in local sag from the crest to avoid subtracting nearly equal heights or radii.\n'
-    '  const cosineSag = dx => 2 * halfHeight * Math.sin(Math.PI * (dx / span)) ** 2;\n'
-    '  const circleSag = (dx, radius) => {\n'
-    '    const ratio = dx / radius;\n'
-    '    return dx * ratio / (1 + Math.sqrt(1 - ratio ** 2));\n'
-    '  };\n'
-    '  const largestSag = Math.max(cosineSag(halfSpan), circleSag(halfSpan, exact), circleSag(halfSpan, legacy));\n'
-    '  const pixelsPerMm = Math.min((canvas.width - 96) / (2 * halfSpan), (canvas.height - crestY - 24) / largestSag);\n'
-    '  canvas.height = Math.min(canvas.height, Math.ceil(crestY + largestSag * pixelsPerMm + 24));\n'
-    "  const ctx = canvas.getContext('2d');\n"
-    '  const offsets = Array.from({length: 161}, (_, i) => halfSpan * (i - 80) / 80);\n'
-    '  function trace(xs, sag, color, dash, width) {\n'
-    '    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash);\n'
-    '    ctx.moveTo(crestX + xs[0] * pixelsPerMm, crestY + sag(xs[0]) * pixelsPerMm);\n'
-    '    for (const dx of xs.slice(1)) ctx.lineTo(crestX + dx * pixelsPerMm, crestY + sag(dx) * pixelsPerMm);\n'
-    '    ctx.stroke();\n'
-    '  }\n'
-    "  trace([-halfSpan, halfSpan], () => 0, '#647c86', [], 1);\n"
-    '  trace(offsets, dx => circleSag(dx, exact), green, [], 4.5);\n'
-    "  trace(offsets, dx => circleSag(dx, legacy), '#934717', [12, 6], 2.8);\n"
-    '  trace(offsets, cosineSag, blue, [2, 5], 2.2);\n'
-    '  ctx.beginPath(); ctx.arc(crestX, crestY, 3.5, 0, 2 * Math.PI); ctx.fillStyle = ink; ctx.fill();\n'
-    "  ctx.font = '600 15px system-ui'; ctx.textAlign = 'center'; ctx.fillText('Crest', crestX, crestY - 9);\n"
-    '  return (circleSag(halfSpan, exact) - circleSag(halfSpan, legacy)) * pixelsPerMm < 4;\n'
-    '}\n'
-    "const crestPlot = document.getElementById('crest-plot');\n"
-    "const emptyCrest = document.getElementById('crest-empty');\n"
-    'const canPlotCrest = legacyRadius >= curvatureRadius &&\n'
-    '  [l2, amplitude, legacyRadius, curvatureRadius].every(value => Number.isFinite(value) && value > 0);\n'
-    'crestPlot.hidden = !canPlotCrest;\n'
-    'emptyCrest.hidden = canPlotCrest;\n'
-    'if (canPlotCrest) {\n'
-    "  const overlap = drawCosineCrest(document.getElementById('crest-detail'), l2, amplitude, legacyRadius, curvatureRadius);\n"
-    "  document.getElementById('crest-overlap').hidden = !overlap;\n"
-    '} else {\n'
-    "  emptyCrest.textContent = flatCosine ? 'The flat cosine has zero curvature and no finite radius to draw.' :\n"
-    "    'The crest detail is unavailable for this profile.';\n"
-    '}\n'
-    '</script>\n'
     '</body>\n'
     '</html>\n'
 )
@@ -567,18 +450,12 @@ def format_report(result, thickness=None):
         for label, value in fields
     ]
     lines.append('l2 is the horizontal endpoint span of the neutral fibre.')
-    for method, radius, strain in (
-        ('Legacy estimate', result['cosine_radius_excel_mm'], result['cosine_strain_excel_pct']),
-        ('Cosine curvature', result['cosine_radius_corrected_mm'], result['cosine_strain_corrected_pct']),
-    ):
-        radius_text = 'unbounded (flat cosine)' if radius is None else _cosine_number(radius, 'mm')
-        strain_text = 'not calculated (no thickness)' if strain is None else _cosine_number(strain, '%')
-        lines.append(f'{method}: R = {radius_text}, outer-fibre strain = {strain_text}')
-    lines.extend((
-        'Both strains are model estimates.',
-        'Fracture screening uses the legacy estimate in the illustrated report.',
-        'Actual cracking requires application-specific validation.',
-    ))
+    radius = result['cosine_radius_corrected_mm']
+    strain = result['cosine_strain_corrected_pct']
+    radius_text = 'unbounded (flat cosine)' if radius is None else _cosine_number(radius, 'mm')
+    strain_text = 'not calculated (no thickness)' if strain is None else _cosine_number(strain, '%')
+    lines.append(f'Cosine curvature: R = {radius_text}, outer-fibre strain = {strain_text}')
+    lines.append('The cosine bending estimate is not a crack prediction or material approval.')
     return '\r\n'.join(lines)
 
 

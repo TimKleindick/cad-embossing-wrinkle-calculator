@@ -12,17 +12,10 @@ h1{margin:0 0 6px;font-size:clamp(1.8rem,4vw,2.6rem);letter-spacing:-.035em}
 h2{margin:0 0 8px;font-size:1.16rem}p{margin:0;color:#465c66}
 figure,section{margin:20px 0 0;background:#fff;border:1px solid #d7e2e5;border-radius:12px;padding:18px}
 .plot{overflow-x:auto}canvas{width:100%;min-width:640px;height:auto;display:block}
-figcaption,.detail-key{display:flex;gap:12px 26px;flex-wrap:wrap;color:#364d59;font-size:.9rem}
+figcaption{display:flex;gap:12px 26px;flex-wrap:wrap;color:#364d59;font-size:.9rem}
 .key{display:inline-block;width:24px;margin-right:8px;border-top:3px solid #03796d;vertical-align:middle}
 .cosine{border-color:#4151aa;border-top-style:dashed}
 .straight{border-color:#a13355}
-.legacy{border-color:#934717;border-top-style:dashed}
-.crest-cosine{border-color:#4151aa;border-top-style:dotted}
-.common-tangent{border-top:1px solid #647c86}
-#crest-detail{min-width:0}
-#crest-values{margin-top:12px}
-#crest-values thead th{border-bottom:1px solid #e7eef0}
-#crest-values thead th:not(:first-child){width:auto;text-align:right}
 details{margin-top:20px}summary{cursor:pointer;width:max-content;padding:8px 13px;border:1px solid #91a9af;border-radius:6px;background:#fff;font-weight:650}
 details section{margin-top:10px}
 table{width:100%;border-collapse:collapse;font-size:.94rem}
@@ -30,9 +23,6 @@ th,td{padding:7px 0;border-bottom:1px solid #e7eef0;text-align:left;vertical-ali
 tr:last-child th,tr:last-child td{border-bottom:0}th{padding-right:12px;font-weight:600;width:30%}
 td.value{font-variant-numeric:tabular-nums;text-align:right;font-weight:650}
 .note{margin-top:10px;font-size:.87rem}.warning{color:#8d3b12;font-weight:650}
-input{font:inherit;text-align:right;width:7rem;padding:5px;border:1px solid #91a9af;border-radius:4px}
-input[aria-invalid="true"]{border-color:#a12323}
-.low{color:#07665a}.critical{color:#8d3b12}.high{color:#a12323}
 @media(max-width:720px){th,td{padding:6px 3px}th{width:45%}}
 </style>
 </head>
@@ -60,36 +50,14 @@ The dimension values are listed in the table.
 <table aria-labelledby="geometry-title"><tbody id="geometry"></tbody></table>
 <p class="note">l<sub>2</sub> is the horizontal span between the neutral-fibre endpoints in this model.</p>
 </section>
-<section aria-labelledby="crest-title">
-<h2 id="crest-title">Cosine crest detail</h2>
-<div id="crest-plot" hidden>
-<canvas id="crest-detail" width="800" height="250" role="img" aria-label="Neutral-fibre cosine and two tangent circle segments overlaid at the crest on equal axes" aria-describedby="crest-caption"></canvas>
-<div class="detail-key" id="crest-caption">
-<span><i class="key crest-cosine"></i>Neutral-fibre cosine</span>
-<span><i class="key common-tangent"></i>Common tangent at the crest</span>
-</div>
-<p class="note">Both circles touch at the crest. The <strong>Cosine curvature</strong> circle also matches the local curvature there. The <strong>Legacy estimate</strong> uses twice that radius for workbook compatibility. The horizontal and vertical scales are equal.</p>
-<p class="note" id="crest-overlap" hidden>The segments nearly overlap at this scale.</p>
-</div>
-<p class="note" id="crest-empty" hidden></p>
-<table id="crest-values" aria-labelledby="crest-title">
-<thead><tr><th scope="col">Method</th><th scope="col">Radius R</th><th scope="col">Estimated outer-fibre bending strain</th></tr></thead>
-<tbody>
-<tr><th scope="row"><i class="key legacy"></i>Legacy estimate</th><td class="value" id="legacy-radius"></td><td class="value" id="legacy-strain"></td></tr>
-<tr><th scope="row"><i class="key"></i>Cosine curvature</th><td class="value" id="curvature-radius"></td><td class="value" id="curvature-strain"></td></tr>
-</tbody>
-</table>
-</section>
 <section aria-labelledby="strain-title">
-<h2 id="strain-title">Strain and fracture screening</h2>
+<h2 id="strain-title">Cosine bending estimate</h2>
 <table aria-labelledby="strain-title"><tbody>
 <tr><th scope="row">Wall thickness</th><td class="value" id="wall-thickness"></td></tr>
-<tr><th scope="row"><label for="fracture-elongation">Fracture elongation A</label></th>
-<td class="value"><input id="fracture-elongation" type="text" inputmode="decimal" maxlength="24" aria-describedby="fracture-source" placeholder="e.g. 15.00"> %</td></tr>
-<tr><th scope="row">Fracture risk screening (Legacy estimate)</th><td class="value" id="fracture-band" aria-live="polite"></td></tr>
+<tr><th scope="row">Minimum cosine radius (neutral fibre)</th><td class="value" id="curvature-radius"></td></tr>
+<tr><th scope="row">Estimated outer-fibre bending strain</th><td class="value" id="curvature-strain"></td></tr>
 </tbody></table>
-<p class="note" id="fracture-source">Enter the elongation from a tensile test or the applicable value from DIN EN 755-2.</p>
-<p class="note">Both strains use the simplified bending model <var>t</var>/(2<var>R</var>). Screening compares the unrounded Legacy estimate with 70% and 100% of the entered elongation. Actual cracking and production suitability require application-specific validation.</p>
+<p class="note">The estimate uses the radius at maximum cosine curvature in the simplified bending model <var>t</var>/(2<var>R</var>). This is not a crack prediction or material approval.</p>
 </section>
 <details>
 <summary>More information</summary>
@@ -101,26 +69,11 @@ The dimension values are listed in the table.
 </details>
 </main>
 <script id="result-data" type="application/json">{{DATA}}</script>
-<script id="screening-rules">
-'use strict';
-function parseFractureElongation(text) {
-  const value = text.trim();
-  if (!/^(?:\d+(?:[.,]\d+)?|[.,]\d+)$/.test(value)) return null;
-  const number = Number(value.replace(',', '.'));
-  return Number.isFinite(number) && number > 0 ? number : null;
-}
-function fractureBand(strain, elongation) {
-  if (!Number.isFinite(strain) || strain < 0 || !Number.isFinite(elongation) || elongation <= 0) return null;
-  if (strain >= elongation) return 'high';
-  if (strain * 10 < elongation * 7) return 'low';
-  return 'critical';
-}
-</script>
 <script>
 'use strict';
 const {l1, l2, thickness, values, fit} = JSON.parse(document.getElementById('result-data').textContent);
 const [amplitude, radius, height, angle] = values;
-const [legacyRadius, curvatureRadius, , legacyStrain, curvatureStrain] = values.slice(10, 15);
+const curvatureRadius = values[11], curvatureStrain = values[14];
 const format = new Intl.NumberFormat('en-GB', {minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false});
 const withUnit = (value, unit) => value === null ? '\u2013' : `${format.format(value)} ${unit}`;
 function table(id, rows) {
@@ -154,28 +107,13 @@ const target = document.getElementById('length-target');
 const meetsTarget = Math.abs(values[7]) < 0.1;
 target.textContent = meetsTarget ? 'Length deviation is below 0.10%.' : 'Length deviation reaches or exceeds 0.10%.';
 if (!meetsTarget) target.classList.add('warning');
-document.getElementById('wall-thickness').textContent = withUnit(thickness, 'mm');
-const elongationInput = document.getElementById('fracture-elongation');
-const assessment = document.getElementById('fracture-band');
-const bandLabels = {
-  low: 'Low (below 70% of fracture elongation)',
-  critical: 'Critical (70% to below 100% of fracture elongation)',
-  high: 'High (at or above fracture elongation)'
-};
-function updateAssessment() {
-  const raw = elongationInput.value.trim();
-  const elongation = parseFractureElongation(raw);
-  const band = fractureBand(legacyStrain, elongation);
-  const invalid = raw !== '' && elongation === null;
-  elongationInput.setAttribute('aria-invalid', String(invalid));
-  assessment.className = band ? `value ${band}` : 'value';
-  if (band) assessment.textContent = bandLabels[band];
-  else if (invalid) assessment.textContent = 'Enter a positive percentage.';
-  else if (legacyStrain === null) assessment.textContent = 'Wall thickness required.';
-  else assessment.textContent = 'Enter fracture elongation to assess.';
+function curvatureValue(value, unit) {
+  return value > 0 && value < .01 ? value.toExponential(2) + ' ' + unit : withUnit(value, unit);
 }
-elongationInput.addEventListener('input', updateAssessment);
-updateAssessment();
+document.getElementById('wall-thickness').textContent = withUnit(thickness, 'mm');
+document.getElementById('curvature-radius').textContent = curvatureRadius === null
+  ? 'Unbounded (flat cosine)' : curvatureValue(curvatureRadius, 'mm');
+document.getElementById('curvature-strain').textContent = curvatureValue(curvatureStrain, '%');
 const canvas = document.getElementById('profile');
 const ctx = canvas.getContext('2d');
 const scale = Math.min(650 / l2, 224 / Math.max(height, 2 * amplitude, l2 * .01));
@@ -281,61 +219,6 @@ curve(cosine.map(([px, py]) => [px, py - lengthOffset]), blue, [], 1.5);
 arrowhead(left, measureY, 0, 1, blue);
 arrowhead(right, measureY, 0, -1, blue);
 label(`l\u2081 = ${withUnit(l1, 'mm')}`, midX, y(2 * amplitude) - lengthOffset - 8, blue);
-</script>
-<script id="crest-detail-script">
-'use strict';
-const flatCosine = amplitude === 0;
-function crestValue(value, unit) {
-  if (!Number.isFinite(value)) return withUnit(null, unit);
-  return value > 0 && value < .01 ? `${value.toExponential(2)} ${unit}` : withUnit(value, unit);
-}
-const radiusText = value => flatCosine ? 'Unbounded (flat cosine)' : crestValue(value, 'mm');
-document.getElementById('legacy-radius').textContent = radiusText(legacyRadius);
-document.getElementById('curvature-radius').textContent = radiusText(curvatureRadius);
-document.getElementById('legacy-strain').textContent = crestValue(legacyStrain, '%');
-document.getElementById('curvature-strain').textContent = crestValue(curvatureStrain, '%');
-
-function drawCosineCrest(canvas, span, halfHeight, legacy, exact) {
-  const crestX = canvas.width / 2, crestY = 34;
-  const halfSpan = Math.min(span / 4, exact * .94);
-  // Work in local sag from the crest to avoid subtracting nearly equal heights or radii.
-  const cosineSag = dx => 2 * halfHeight * Math.sin(Math.PI * (dx / span)) ** 2;
-  const circleSag = (dx, radius) => {
-    const ratio = dx / radius;
-    return dx * ratio / (1 + Math.sqrt(1 - ratio ** 2));
-  };
-  const largestSag = Math.max(cosineSag(halfSpan), circleSag(halfSpan, exact), circleSag(halfSpan, legacy));
-  const pixelsPerMm = Math.min((canvas.width - 96) / (2 * halfSpan), (canvas.height - crestY - 24) / largestSag);
-  canvas.height = Math.min(canvas.height, Math.ceil(crestY + largestSag * pixelsPerMm + 24));
-  const ctx = canvas.getContext('2d');
-  const offsets = Array.from({length: 161}, (_, i) => halfSpan * (i - 80) / 80);
-  function trace(xs, sag, color, dash, width) {
-    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash);
-    ctx.moveTo(crestX + xs[0] * pixelsPerMm, crestY + sag(xs[0]) * pixelsPerMm);
-    for (const dx of xs.slice(1)) ctx.lineTo(crestX + dx * pixelsPerMm, crestY + sag(dx) * pixelsPerMm);
-    ctx.stroke();
-  }
-  trace([-halfSpan, halfSpan], () => 0, '#647c86', [], 1);
-  trace(offsets, dx => circleSag(dx, exact), green, [], 4.5);
-  trace(offsets, dx => circleSag(dx, legacy), '#934717', [12, 6], 2.8);
-  trace(offsets, cosineSag, blue, [2, 5], 2.2);
-  ctx.beginPath(); ctx.arc(crestX, crestY, 3.5, 0, 2 * Math.PI); ctx.fillStyle = ink; ctx.fill();
-  ctx.font = '600 15px system-ui'; ctx.textAlign = 'center'; ctx.fillText('Crest', crestX, crestY - 9);
-  return (circleSag(halfSpan, exact) - circleSag(halfSpan, legacy)) * pixelsPerMm < 4;
-}
-const crestPlot = document.getElementById('crest-plot');
-const emptyCrest = document.getElementById('crest-empty');
-const canPlotCrest = legacyRadius >= curvatureRadius &&
-  [l2, amplitude, legacyRadius, curvatureRadius].every(value => Number.isFinite(value) && value > 0);
-crestPlot.hidden = !canPlotCrest;
-emptyCrest.hidden = canPlotCrest;
-if (canPlotCrest) {
-  const overlap = drawCosineCrest(document.getElementById('crest-detail'), l2, amplitude, legacyRadius, curvatureRadius);
-  document.getElementById('crest-overlap').hidden = !overlap;
-} else {
-  emptyCrest.textContent = flatCosine ? 'The flat cosine has zero curvature and no finite radius to draw.' :
-    'The crest detail is unavailable for this profile.';
-}
 </script>
 </body>
 </html>

@@ -93,30 +93,6 @@ class EntryTests(unittest.TestCase):
                     self.assertAlmostEqual(data['fit'][100], result['height_mm'], places=10)
                     self.assertEqual(data['values'][1], result['radius_mm'])
 
-    def test_report_screens_unrounded_strain_at_both_thresholds(self):
-        import re
-        import shutil
-
-        node = shutil.which('node')
-        if node is None:
-            self.skipTest('Node.js is needed to exercise the shared browser rules')
-        template = (ROOT / 'cad/result.html').read_text(encoding='ascii')
-        script = re.search(r'<script id="screening-rules">(.*?)</script>', template, re.S)
-        self.assertIsNotNone(script, 'report needs shared screening rules')
-        checks = """
-const assert = require('node:assert/strict');
-for (const [strain, elongation, expected] of [
-  [6.999, 10, 'low'], [7, 10, 'critical'], [9.999, 10, 'critical'],
-  [10, 10, 'high'], [13.4652400467, 13.47, 'critical'], [0, 10, 'low'],
-  [null, 10, null], [1, null, null], [1, 0, null], [1, -2, null],
-]) assert.equal(fractureBand(strain, elongation), expected);
-assert.equal(parseFractureElongation('13,47'), 13.47);
-assert.equal(parseFractureElongation('13.47'), 13.47);
-for (const value of ['', '0', '-5', '1,000.00', 'Infinity', '15%'])
-  assert.equal(parseFractureElongation(value), null);
-"""
-        subprocess.run([node, '-e', script.group(1) + checks], check=True, cwd=ROOT)
-
     def test_sketch_draws_cosine_dimension_and_distinct_fitted_flanks(self):
         import re
         import shutil
@@ -201,110 +177,74 @@ if (radius !== null) {
             p=root/'ready-to-run/NX_WrinkleCalculator.py';p.write_bytes(p.read_bytes()+b'\n# stale')
             with self.assertRaises(ValueError): check_generated(root,expected)
 
-    def test_report_compares_cosine_strains_at_a_common_crest_and_keeps_legacy_screening(self):
+    def test_standalone_nx_text_shows_only_cosine_curvature_estimate(self):
+        source = runpy.run_path(str(ROOT / 'ready-to-run/NX_WrinkleCalculator.py'))
+        for lengths, thickness, radius, strain in [
+            ((40, 30), 2, '3.71 mm', '26.93 %'),
+            ((40, 30), None, '3.71 mm', 'not calculated (no thickness)'),
+            ((30, 30), 2, 'unbounded (flat cosine)', '0.00 %'),
+            ((0.002, 0.001), 0.000000001, '6.12e-5 mm', '8.17e-4 %'),
+        ]:
+            with self.subTest(lengths=lengths, thickness=thickness):
+                result = source['calculate'](*lengths, thickness)
+                lines = source['format_report'](result, thickness).splitlines()
+                self.assertIn(f'Cosine curvature: R = {radius}, outer-fibre strain = {strain}', lines)
+                self.assertEqual(sum('outer-fibre strain =' in line for line in lines), 1)
+                self.assertNotIn('legacy', ' '.join(lines).lower())
+                self.assertIn('not a crack prediction', ' '.join(lines).lower())
+
+    def test_report_shows_only_cosine_curvature_without_zoom_or_fracture_badge(self):
         import re
         import shutil
 
+        journal = runpy.run_path(str(ROOT / 'ready-to-run/NX_WrinkleCalculator.py'))
+        report = journal['render_illustrated_report'](journal['calculate'](40, 30, 2), 2)
+        self.assertEqual(re.findall(r'<canvas\b[^>]*\bid="([^"]+)"', report), ['profile'])
+        self.assertIn('<summary>More information</summary>', report)
+        self.assertNotRegex(report, r'(?i)legacy estimate|fracture-band|fracture-elongation')
+        self.assertIn('not a crack prediction', report.lower())
+
         node = shutil.which('node')
         if node is None:
-            self.skipTest('Node.js is needed to exercise the browser report')
-        journal = runpy.run_path(str(ROOT / 'ready-to-run/NX_WrinkleCalculator.py'))
-        template = (ROOT / 'cad/result.html').read_text(encoding='ascii')
-        scripts = '\n'.join(re.findall(r'<script(?: id="[a-z-]+")?>(.*?)</script>', template, re.S))
+            self.skipTest('Node.js is needed to exercise the browser report values')
         harness = """
 const assert = require('node:assert/strict');
 const elements = new Map();
-function element(id) {
-  if (!elements.has(id)) {
-    const paths = [];
-    const ctx = {
-      beginPath() { this.points = []; },
-      moveTo(...p) { this.points.push(p); }, lineTo(...p) { this.points.push(p); },
-      stroke() { paths.push(this.points); }, setLineDash() {}, arc() {}, fill() {},
-      strokeText() {}, fillText() {}
-    };
-    elements.set(id, {
-      paths, width: 800, height: 250, getContext: () => ctx, value: '', hidden: false,
-      classList: {add() {}}, setAttribute() {},
-      addEventListener(name, callback) { this[name] = callback; },
-      insertRow: () => ({append() {}, insertCell: () => ({})})
-    });
-  }
-  return elements.get(id);
+const context = new Proxy({}, {get: (object, name) => object[name] || (() => {})});
+for (const id of reportIds) {
+  elements.set(id, {
+    width: 1000, height: 350, getContext: () => context, hidden: false,
+    classList: {add() {}}, insertRow: () => ({append() {}, insertCell: () => ({})})
+  });
 }
-const document = {getElementById: element, createElement: () => ({})};
+const document = {getElementById: id => elements.get(id), createElement: () => ({})};
+elements.get('result-data').textContent = JSON.stringify(data);
 """
-        reference = """
-assert.equal(element('legacy-radius').textContent, '7.43 mm');
-assert.equal(element('curvature-radius').textContent, '3.71 mm');
-assert.equal(element('legacy-strain').textContent, '13.47 %');
-assert.equal(element('curvature-strain').textContent, '26.93 %');
-const field = element('fracture-elongation');
-field.value = '20';
-field.input();
-assert.match(element('fracture-band').textContent, /^Low/); // 26.93% would give High.
-for (const [limit, label] of [['16', /^Critical/], ['12', /^High/]]) {
-  field.value = limit;
-  field.input();
-  assert.match(element('fracture-band').textContent, label);
-}
-assert.equal(element('crest-plot').hidden, false);
-const paths = element('crest-detail').paths.filter(path => path.length > 50);
-assert.equal(paths.length, 3, 'the sampled cosine and both circle segments must be drawn');
-const [legacy, cosinePath, exact] = paths.sort((a, b) => a[0][1] - b[0][1]);
-const center = Math.floor(exact.length / 2);
-const [cx, cy] = exact[center];
-const radiiInPixels = [];
-for (const path of [legacy, exact]) {
-  assert.deepEqual(path[center], [cx, cy]);
-  const [px, py] = path[0];
-  const radius = ((px - cx)**2 + (py - cy)**2) / (2 * (py - cy));
-  radiiInPixels.push(radius);
-  for (const [x, y] of path) assert.ok(Math.abs(Math.hypot(x - cx, y - cy - radius) - radius) < 1e-8);
-}
-const pixelsPerMm = radiiInPixels[1] / 3.713264660;
-assert.ok(Math.abs(radiiInPixels[0] / pixelsPerMm - 7.426529319) < 1e-7);
-assert.deepEqual(cosinePath[center], [cx, cy]);
-for (const [x, y] of cosinePath) {
-  const dx = (x - cx) / pixelsPerMm;
-  const drop = 6.139413271 * (1 - Math.cos(2 * Math.PI * dx / 30));
-  assert.ok(Math.abs((y - cy) / pixelsPerMm - drop) < 1e-7);
-}
+        checks = """
+assert.equal(elements.get('curvature-radius').textContent, expectedRadius);
+assert.equal(elements.get('curvature-strain').textContent, expectedStrain);
+assert.equal(elements.get('wall-thickness').textContent, expectedThickness);
+assert.ok(elements.get('length-target').textContent.includes('0.10%'));
 """
-        cases = [
-            (40, 30, 2, reference),
-            (40, 30, None, r"""
-assert.equal(element('legacy-radius').textContent, '7.43 mm');
-assert.equal(element('legacy-strain').textContent, '\u2013');
-assert.equal(element('curvature-strain').textContent, '\u2013');
-assert.equal(element('crest-plot').hidden, false);
-assert.match(element('fracture-band').textContent, /^Wall thickness required/);
-"""),
-            (30, 30, 2, """
-assert.match(element('legacy-radius').textContent, /^Unbounded/);
-assert.match(element('curvature-radius').textContent, /^Unbounded/);
-assert.equal(element('legacy-strain').textContent, '0.00 %');
-assert.equal(element('curvature-strain').textContent, '0.00 %');
-assert.equal(element('crest-plot').hidden, true);
-assert.equal(element('crest-detail').paths.length, 0);
-"""),
-            (0.002, 0.001, None, """
-assert.equal(element('legacy-radius').textContent, '1.22e-4 mm');
-assert.equal(element('curvature-radius').textContent, '6.12e-5 mm');
-assert.equal(element('crest-plot').hidden, false);
-"""),
-            (30.000003, 30, 2, """
-assert.equal(element('legacy-strain').textContent, '6.62e-3 %');
-assert.equal(element('crest-overlap').hidden, false);
-assert.ok(element('crest-detail').height < 125, 'nearly flat detail should use only the height it needs');
-"""),
-        ]
-        for l1, l2, thickness, checks in cases:
+        import json
+        for l1, l2, thickness, radius, strain, wall in [
+            (40, 30, 2, '3.71 mm', '26.93 %', '2.00 mm'),
+            (40, 30, None, '3.71 mm', '\u2013', '\u2013'),
+            (30, 30, 2, 'Unbounded (flat cosine)', '0.00 %', '2.00 mm'),
+            (30, 30, None, 'Unbounded (flat cosine)', '\u2013', '\u2013'),
+            (.002, .001, .000000001, '6.12e-5 mm', '8.17e-4 %', '0.00 mm'),
+            (30.000003, 30, 2, '7549.37 mm', '0.01 %', '2.00 mm'),
+        ]:
             with self.subTest(l1=l1, l2=l2, thickness=thickness):
-                report = journal['render_illustrated_report'](journal['calculate'](l1, l2, thickness), thickness)
-                data = re.search(r'id="result-data" type="application/json">([^<]+)', report)[1]
-                inputs = f"element('result-data').textContent = {data!r};\n"
-                process = subprocess.run([node, '-'], input=harness + inputs + scripts + '\n{\n' + checks + '}\n',
+                result = journal['calculate'](l1, l2, thickness)
+                html = journal['render_illustrated_report'](result, thickness)
+                ids = re.findall(r'\bid="([^"]+)"', html)
+                data = re.search(r'id="result-data" type="application/json">([^<]+)', html)[1]
+                js = '\n'.join(re.findall(r'<script(?: id="[a-z-]+")?>(.*?)</script>', html, re.S))
+                inputs = f'const reportIds = {json.dumps(ids)}, data = {data};\n'
+                expected = list(map(json.dumps, (radius, strain, wall)))
+                expectations = f'const [expectedRadius, expectedStrain, expectedThickness] = [{", ".join(expected)}];\n'
+                process = subprocess.run([node, '-'], input=inputs + harness + js + '\n' + expectations + checks,
                                          text=True, capture_output=True, cwd=ROOT)
                 self.assertEqual(process.returncode, 0, process.stderr)
 
