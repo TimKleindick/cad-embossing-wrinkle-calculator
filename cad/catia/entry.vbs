@@ -1,23 +1,28 @@
-' Native CATScript adapter. No CATVBA project, UserForm, Excel or external COM form.
-' The generator embeds the unchanged pure core above this source.
+' Standalone CATScript adapter. No CATVBA project, Excel, or installed helper required.
+' The generator embeds the pure core and a local Windows Forms script.
 Class WrinkleDialogs
-    Public Function Ask(ByVal prompt,ByVal initial)
-        Ask=InputBox(prompt & vbCrLf & "Lengths are in mm. Use a decimal point or comma without digit grouping. Leave blank or cancel to exit.", _
-                     "Wrinkle Geometry - Source Preview",initial)
-    End Function
-    Public Function ConfirmThickness()
-        ConfirmThickness=MsgBox("Estimate strain from wall thickness?" & vbCrLf & _
-            "Simplified t/(2r) estimate. Material approval and crack safety are outside its scope.", _
-            vbYesNoCancel+vbQuestion,"Wrinkle Geometry - Source Preview")
+    Public Function ReadInputs()
+        Dim status, values
+        status = WTryInputForm(values)
+        If status = 0 Then
+            ReadInputs = values
+        ElseIf status = 2 Then
+            ReadInputs = Empty
+        Else
+            ReadInputs = InputBox("Enter l1 [mm]; l2 [mm]; wall thickness [mm]; elongation at fracture A [%], in that order." & vbCrLf & _
+                "For example: 40;30;2;24,5. Use a decimal point or comma without grouping." & vbCrLf & _
+                "Leave either optional field blank (example: 40;30;;).", _
+                "Wrinkle Geometry - Input", "40;30;2;")
+        End If
     End Function
     Public Sub ShowResult(ByVal text)
         MsgBox text,vbOKOnly+vbInformation,"Wrinkle Geometry - Source Preview"
     End Sub
-    Public Function ShowIllustrated(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
+    Public Function ShowIllustrated(ByRef values, ByVal l1, ByVal l2, ByVal thickness, ByVal fractureElongation)
         Dim succeeded
         On Error Resume Next
         Err.Clear
-        succeeded = WOpenResult(values, l1, l2, thickness)
+        succeeded = WOpenResult(values, l1, l2, thickness, fractureElongation)
         ShowIllustrated = (Err.Number = 0 And succeeded = True)
         On Error GoTo 0
     End Function
@@ -26,6 +31,60 @@ Class WrinkleDialogs
             vbOKOnly+vbExclamation,"Wrinkle Geometry - Check Input"
     End Sub
 End Class
+
+' The form returns only local numeric text. Input values never form part of the command line.
+' Exit code 2 is a deliberate cancel, distinct from a blocked or unavailable form.
+Function WTryInputForm(ByRef values)
+    Dim fs, shell, folder, folderCreated, scriptPath, resultPath, exe, command
+    Dim stream, resultCode
+    values = Empty
+    WTryInputForm = 1
+    On Error Resume Next
+    Err.Clear
+    Set fs = CreateObject("Scripting.FileSystemObject")
+    Set shell = CreateObject("WScript.Shell")
+    If Err.Number = 0 Then
+        folder = fs.BuildPath(fs.GetSpecialFolder(2).Path, "Wrinkle-input-" & fs.GetTempName)
+        If Err.Number = 0 And InStr(folder, "%") = 0 Then
+            Call fs.CreateFolder(folder)
+            folderCreated = (Err.Number = 0)
+        End If
+        If folderCreated Then
+            scriptPath = fs.BuildPath(folder, "input_form.ps1")
+            resultPath = fs.BuildPath(folder, "values.txt")
+            exe = shell.ExpandEnvironmentStrings("%SystemRoot%") & "\System32\WindowsPowerShell\v1.0\powershell.exe"
+            Set stream = fs.CreateTextFile(scriptPath, False, False)
+            If Err.Number = 0 Then
+                stream.Write WInputFormScript()
+                stream.Close
+            End If
+            If Err.Number = 0 And fs.FileExists(exe) And InStr(exe, "%") = 0 Then
+                command = Chr(34) & exe & Chr(34) & _
+                    " -NoProfile -NonInteractive -STA -File " & Chr(34) & scriptPath & Chr(34)
+                resultCode = shell.Run(command, 0, True)
+                If Err.Number = 0 Then
+                    If resultCode = 2 Then
+                        WTryInputForm = 2
+                    ElseIf resultCode = 0 And fs.FileExists(resultPath) Then
+                        Set stream = fs.OpenTextFile(resultPath, 1)
+                        If Err.Number = 0 Then
+                            values = stream.ReadAll
+                            stream.Close
+                            If Err.Number = 0 Then WTryInputForm = 0
+                        End If
+                    End If
+                End If
+            End If
+            ' Delete only the files and the exact directory this invocation created.
+            Err.Clear
+            If fs.FileExists(resultPath) Then Call fs.DeleteFile(resultPath)
+            If fs.FileExists(scriptPath) Then Call fs.DeleteFile(scriptPath)
+            If fs.FolderExists(folder) Then Call fs.DeleteFolder(folder)
+        End If
+    End If
+    Err.Clear
+    On Error GoTo 0
+End Function
 
 Function WParseDecimal(ByVal text)
     Dim i,ch,value,factor,sign,seenSeparator,digitsBefore,digitsAfter
@@ -73,8 +132,8 @@ Function WJsonNumber(ByVal value)
     End If
 End Function
 
-Function WResultData(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
-    Dim numbers(16), fit(200), i, phi, ordinate
+Function WResultData(ByRef values, ByVal l1, ByVal l2, ByVal thickness, ByVal fractureElongation)
+    Dim numbers(16), fit(200), i, phi, ordinate, reference
     For i = 0 To UBound(numbers)
         numbers(i) = WJsonNumber(values(i))
     Next
@@ -84,14 +143,16 @@ Function WResultData(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
         If Not IsEmpty(values(1)) Then ordinate = WrinkleY(l2 * (i / 200), l2, values(1), phi)
         fit(i) = WJsonNumber(ordinate)
     Next
+    reference = ""
+    If Not IsEmpty(fractureElongation) Then reference = ",""elongationAtFracture"":" & WJsonNumber(fractureElongation)
     WResultData = "{""l1"":" & WJsonNumber(l1) & ",""l2"":" & WJsonNumber(l2) & _
-        ",""thickness"":" & WJsonNumber(thickness) & ",""values"":[" & Join(numbers, ",") & _
+        ",""thickness"":" & WJsonNumber(thickness) & reference & ",""values"":[" & Join(numbers, ",") & _
         "],""fit"":[" & Join(fit, ",") & "]}"
 End Function
 
-Function WOpenResult(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
+Function WOpenResult(ByRef values, ByVal l1, ByVal l2, ByVal thickness, ByVal fractureElongation)
     Dim fs, shell, path, report, stream
-    report = Replace(WResultTemplate(), "{{DATA}}", WResultData(values, l1, l2, thickness))
+    report = Replace(WResultTemplate(), "{{DATA}}", WResultData(values, l1, l2, thickness, fractureElongation))
     Set fs = CreateObject("Scripting.FileSystemObject")
     Set shell = CreateObject("Shell.Application")
     path = fs.BuildPath(fs.GetSpecialFolder(2).Path, "Wrinkle-geometry-" & fs.GetTempName & ".html")
@@ -132,7 +193,7 @@ Function WCosineEstimateText(ByVal radius,ByVal strain)
     WCosineEstimateText="Cosine curvature: R = " & radiusText & ", outer-fibre strain = " & strainText
 End Function
 
-Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness)
+Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness, ByVal fractureElongation)
     Dim report
     report="SOURCE PREVIEW - CATIA runtime and import untested" & vbCrLf
     report=report & "Undeformed wall length l1: " & WEntryNumber(l1,"mm") & vbCrLf
@@ -143,34 +204,35 @@ Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness)
     report=report & "Wall thickness: " & WEntryNumber(thickness,"mm") & vbCrLf
     report=report & "l2 is the horizontal endpoint span of the neutral fibre." & vbCrLf
     report=report & WCosineEstimateText(v(11),v(14)) & vbCrLf
+    If Not IsEmpty(fractureElongation) Then
+        report=report & "Elongation at fracture A: " & WEntryNumber(fractureElongation,"%") & _
+            " (reference; not a cracking limit)" & vbCrLf
+    End If
     WResultText=report & "The cosine bending estimate is not a crack prediction or material approval."
 End Function
 
 Function WrinkleRunChecked(ByRef ui)
-    Dim raw,l1,l2,thickness,choice,values
+    Dim raw,fields,l1,l2,thickness,fractureElongation,values
     WrinkleRunChecked=False
-    raw=ui.Ask("Undeformed wall length l1", "40")
+    raw=ui.ReadInputs()
     If IsEmpty(raw) Then Exit Function
     If Trim(CStr(raw))="" Then Exit Function
-    l1=WParseDecimal(raw)
-    raw=ui.Ask("Deformed wall length l2 (neutral fibre, horizontal endpoint span)", "30")
-    If IsEmpty(raw) Then Exit Function
-    If Trim(CStr(raw))="" Then Exit Function
-    l2=WParseDecimal(raw)
+    fields=Split(CStr(raw), ";")
+    If UBound(fields)<>3 Then Err.Raise 5,"WrinkleEntry","Enter l1; l2; wall thickness; elongation at fracture A"
+    l1=WParseDecimal(fields(0))
+    l2=WParseDecimal(fields(1))
     thickness=Empty
-    choice=ui.ConfirmThickness()
-    If choice=2 Then Exit Function
-    If choice=6 Then
-        raw=ui.Ask("Optional wall thickness", "2")
-        If IsEmpty(raw) Then Exit Function
-        If Trim(CStr(raw))="" Then Exit Function
-        thickness=WParseDecimal(raw)
-    ElseIf choice<>7 Then
-        Err.Raise 5,"WrinkleEntry","Unexpected answer"
+    If Trim(fields(2))<>"" Then thickness=WParseDecimal(fields(2))
+    fractureElongation=Empty
+    If Trim(fields(3))<>"" Then
+        fractureElongation=WParseDecimal(fields(3))
+        If fractureElongation<0 Or fractureElongation>1000000 Then
+            Err.Raise 5,"WrinkleEntry","Elongation at fracture A must be between 0 and 1000000 %"
+        End If
     End If
     values=WrinkleCalculate(l1,l2,thickness)
-    If Not ui.ShowIllustrated(values, l1, l2, thickness) Then
-        Call ui.ShowResult(WResultText(values, l1, l2, thickness))
+    If Not ui.ShowIllustrated(values, l1, l2, thickness, fractureElongation) Then
+        Call ui.ShowResult(WResultText(values, l1, l2, thickness, fractureElongation))
     End If
     WrinkleRunChecked=True
 End Function

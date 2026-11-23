@@ -46,6 +46,10 @@ jobs:
         if: runner.os == 'Windows'
         timeout-minutes: 2
         run: python tools/test_windows_dialog.py
+      - name: Exercise the generated CATScript input form outside CATIA
+        if: runner.os == 'Windows'
+        timeout-minutes: 2
+        run: python tools/test_catia_windows_form.py
       - name: Build and verify exact source allowlist
         run: |
           python tools/package_preview.py build

@@ -204,26 +204,31 @@ Function WrinkleCalculate(ByVal l1, ByVal l2, ByVal thickness)
         (polygon * l2 / l1 - 1) * 100, Sqr(best(2) / (WN + 1)) * l2, maxError * l2, rexcel * l2, corrected * l2, _
         arcStrain, excelStrain, correctedStrain, best(2) * l2 * l2, WN)
 End Function
-' Native CATScript adapter. No CATVBA project, UserForm, Excel or external COM form.
-' The generator embeds the unchanged pure core above this source.
+' Standalone CATScript adapter. No CATVBA project, Excel, or installed helper required.
+' The generator embeds the pure core and a local Windows Forms script.
 Class WrinkleDialogs
-    Public Function Ask(ByVal prompt,ByVal initial)
-        Ask=InputBox(prompt & vbCrLf & "Lengths are in mm. Use a decimal point or comma without digit grouping. Leave blank or cancel to exit.", _
-                     "Wrinkle Geometry - Source Preview",initial)
-    End Function
-    Public Function ConfirmThickness()
-        ConfirmThickness=MsgBox("Estimate strain from wall thickness?" & vbCrLf & _
-            "Simplified t/(2r) estimate. Material approval and crack safety are outside its scope.", _
-            vbYesNoCancel+vbQuestion,"Wrinkle Geometry - Source Preview")
+    Public Function ReadInputs()
+        Dim status, values
+        status = WTryInputForm(values)
+        If status = 0 Then
+            ReadInputs = values
+        ElseIf status = 2 Then
+            ReadInputs = Empty
+        Else
+            ReadInputs = InputBox("Enter l1 [mm]; l2 [mm]; wall thickness [mm]; elongation at fracture A [%], in that order." & vbCrLf & _
+                "For example: 40;30;2;24,5. Use a decimal point or comma without grouping." & vbCrLf & _
+                "Leave either optional field blank (example: 40;30;;).", _
+                "Wrinkle Geometry - Input", "40;30;2;")
+        End If
     End Function
     Public Sub ShowResult(ByVal text)
         MsgBox text,vbOKOnly+vbInformation,"Wrinkle Geometry - Source Preview"
     End Sub
-    Public Function ShowIllustrated(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
+    Public Function ShowIllustrated(ByRef values, ByVal l1, ByVal l2, ByVal thickness, ByVal fractureElongation)
         Dim succeeded
         On Error Resume Next
         Err.Clear
-        succeeded = WOpenResult(values, l1, l2, thickness)
+        succeeded = WOpenResult(values, l1, l2, thickness, fractureElongation)
         ShowIllustrated = (Err.Number = 0 And succeeded = True)
         On Error GoTo 0
     End Function
@@ -232,6 +237,60 @@ Class WrinkleDialogs
             vbOKOnly+vbExclamation,"Wrinkle Geometry - Check Input"
     End Sub
 End Class
+
+' The form returns only local numeric text. Input values never form part of the command line.
+' Exit code 2 is a deliberate cancel, distinct from a blocked or unavailable form.
+Function WTryInputForm(ByRef values)
+    Dim fs, shell, folder, folderCreated, scriptPath, resultPath, exe, command
+    Dim stream, resultCode
+    values = Empty
+    WTryInputForm = 1
+    On Error Resume Next
+    Err.Clear
+    Set fs = CreateObject("Scripting.FileSystemObject")
+    Set shell = CreateObject("WScript.Shell")
+    If Err.Number = 0 Then
+        folder = fs.BuildPath(fs.GetSpecialFolder(2).Path, "Wrinkle-input-" & fs.GetTempName)
+        If Err.Number = 0 And InStr(folder, "%") = 0 Then
+            Call fs.CreateFolder(folder)
+            folderCreated = (Err.Number = 0)
+        End If
+        If folderCreated Then
+            scriptPath = fs.BuildPath(folder, "input_form.ps1")
+            resultPath = fs.BuildPath(folder, "values.txt")
+            exe = shell.ExpandEnvironmentStrings("%SystemRoot%") & "\System32\WindowsPowerShell\v1.0\powershell.exe"
+            Set stream = fs.CreateTextFile(scriptPath, False, False)
+            If Err.Number = 0 Then
+                stream.Write WInputFormScript()
+                stream.Close
+            End If
+            If Err.Number = 0 And fs.FileExists(exe) And InStr(exe, "%") = 0 Then
+                command = Chr(34) & exe & Chr(34) & _
+                    " -NoProfile -NonInteractive -STA -File " & Chr(34) & scriptPath & Chr(34)
+                resultCode = shell.Run(command, 0, True)
+                If Err.Number = 0 Then
+                    If resultCode = 2 Then
+                        WTryInputForm = 2
+                    ElseIf resultCode = 0 And fs.FileExists(resultPath) Then
+                        Set stream = fs.OpenTextFile(resultPath, 1)
+                        If Err.Number = 0 Then
+                            values = stream.ReadAll
+                            stream.Close
+                            If Err.Number = 0 Then WTryInputForm = 0
+                        End If
+                    End If
+                End If
+            End If
+            ' Delete only the files and the exact directory this invocation created.
+            Err.Clear
+            If fs.FileExists(resultPath) Then Call fs.DeleteFile(resultPath)
+            If fs.FileExists(scriptPath) Then Call fs.DeleteFile(scriptPath)
+            If fs.FolderExists(folder) Then Call fs.DeleteFolder(folder)
+        End If
+    End If
+    Err.Clear
+    On Error GoTo 0
+End Function
 
 Function WParseDecimal(ByVal text)
     Dim i,ch,value,factor,sign,seenSeparator,digitsBefore,digitsAfter
@@ -279,8 +338,8 @@ Function WJsonNumber(ByVal value)
     End If
 End Function
 
-Function WResultData(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
-    Dim numbers(16), fit(200), i, phi, ordinate
+Function WResultData(ByRef values, ByVal l1, ByVal l2, ByVal thickness, ByVal fractureElongation)
+    Dim numbers(16), fit(200), i, phi, ordinate, reference
     For i = 0 To UBound(numbers)
         numbers(i) = WJsonNumber(values(i))
     Next
@@ -290,14 +349,16 @@ Function WResultData(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
         If Not IsEmpty(values(1)) Then ordinate = WrinkleY(l2 * (i / 200), l2, values(1), phi)
         fit(i) = WJsonNumber(ordinate)
     Next
+    reference = ""
+    If Not IsEmpty(fractureElongation) Then reference = ",""elongationAtFracture"":" & WJsonNumber(fractureElongation)
     WResultData = "{""l1"":" & WJsonNumber(l1) & ",""l2"":" & WJsonNumber(l2) & _
-        ",""thickness"":" & WJsonNumber(thickness) & ",""values"":[" & Join(numbers, ",") & _
+        ",""thickness"":" & WJsonNumber(thickness) & reference & ",""values"":[" & Join(numbers, ",") & _
         "],""fit"":[" & Join(fit, ",") & "]}"
 End Function
 
-Function WOpenResult(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
+Function WOpenResult(ByRef values, ByVal l1, ByVal l2, ByVal thickness, ByVal fractureElongation)
     Dim fs, shell, path, report, stream
-    report = Replace(WResultTemplate(), "{{DATA}}", WResultData(values, l1, l2, thickness))
+    report = Replace(WResultTemplate(), "{{DATA}}", WResultData(values, l1, l2, thickness, fractureElongation))
     Set fs = CreateObject("Scripting.FileSystemObject")
     Set shell = CreateObject("Shell.Application")
     path = fs.BuildPath(fs.GetSpecialFolder(2).Path, "Wrinkle-geometry-" & fs.GetTempName & ".html")
@@ -338,7 +399,7 @@ Function WCosineEstimateText(ByVal radius,ByVal strain)
     WCosineEstimateText="Cosine curvature: R = " & radiusText & ", outer-fibre strain = " & strainText
 End Function
 
-Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness)
+Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness, ByVal fractureElongation)
     Dim report
     report="SOURCE PREVIEW - CATIA runtime and import untested" & vbCrLf
     report=report & "Undeformed wall length l1: " & WEntryNumber(l1,"mm") & vbCrLf
@@ -349,34 +410,35 @@ Function WResultText(ByRef v,ByVal l1,ByVal l2,ByVal thickness)
     report=report & "Wall thickness: " & WEntryNumber(thickness,"mm") & vbCrLf
     report=report & "l2 is the horizontal endpoint span of the neutral fibre." & vbCrLf
     report=report & WCosineEstimateText(v(11),v(14)) & vbCrLf
+    If Not IsEmpty(fractureElongation) Then
+        report=report & "Elongation at fracture A: " & WEntryNumber(fractureElongation,"%") & _
+            " (reference; not a cracking limit)" & vbCrLf
+    End If
     WResultText=report & "The cosine bending estimate is not a crack prediction or material approval."
 End Function
 
 Function WrinkleRunChecked(ByRef ui)
-    Dim raw,l1,l2,thickness,choice,values
+    Dim raw,fields,l1,l2,thickness,fractureElongation,values
     WrinkleRunChecked=False
-    raw=ui.Ask("Undeformed wall length l1", "40")
+    raw=ui.ReadInputs()
     If IsEmpty(raw) Then Exit Function
     If Trim(CStr(raw))="" Then Exit Function
-    l1=WParseDecimal(raw)
-    raw=ui.Ask("Deformed wall length l2 (neutral fibre, horizontal endpoint span)", "30")
-    If IsEmpty(raw) Then Exit Function
-    If Trim(CStr(raw))="" Then Exit Function
-    l2=WParseDecimal(raw)
+    fields=Split(CStr(raw), ";")
+    If UBound(fields)<>3 Then Err.Raise 5,"WrinkleEntry","Enter l1; l2; wall thickness; elongation at fracture A"
+    l1=WParseDecimal(fields(0))
+    l2=WParseDecimal(fields(1))
     thickness=Empty
-    choice=ui.ConfirmThickness()
-    If choice=2 Then Exit Function
-    If choice=6 Then
-        raw=ui.Ask("Optional wall thickness", "2")
-        If IsEmpty(raw) Then Exit Function
-        If Trim(CStr(raw))="" Then Exit Function
-        thickness=WParseDecimal(raw)
-    ElseIf choice<>7 Then
-        Err.Raise 5,"WrinkleEntry","Unexpected answer"
+    If Trim(fields(2))<>"" Then thickness=WParseDecimal(fields(2))
+    fractureElongation=Empty
+    If Trim(fields(3))<>"" Then
+        fractureElongation=WParseDecimal(fields(3))
+        If fractureElongation<0 Or fractureElongation>1000000 Then
+            Err.Raise 5,"WrinkleEntry","Elongation at fracture A must be between 0 and 1000000 %"
+        End If
     End If
     values=WrinkleCalculate(l1,l2,thickness)
-    If Not ui.ShowIllustrated(values, l1, l2, thickness) Then
-        Call ui.ShowResult(WResultText(values, l1, l2, thickness))
+    If Not ui.ShowIllustrated(values, l1, l2, thickness, fractureElongation) Then
+        Call ui.ShowResult(WResultText(values, l1, l2, thickness, fractureElongation))
     End If
     WrinkleRunChecked=True
 End Function
@@ -463,7 +525,10 @@ Function WResultTemplate()
     html = html & "<tr><th scope=""row"">Wall thickness</th><td class=""value"" id=""wall-thickness""></td></tr>" & vbLf
     html = html & "<tr><th scope=""row"">Minimum cosine radius (neutral fibre)</th><td class=""value"" id=""curvature-radius""></td></tr>" & vbLf
     html = html & "<tr><th scope=""row"">Estimated outer-fibre bending strain</th><td class=""value"" id=""curvature-strain""></td></tr>" & vbLf
+    html = html & "</tbody><tbody id=""fracture-reference"" hidden>" & vbLf
+    html = html & "<tr><th scope=""row"">Elongation at fracture A (reference only)</th><td class=""value"" id=""a-reference-value""></td></tr>" & vbLf
     html = html & "</tbody></table>" & vbLf
+    html = html & "<p class=""note"" id=""fracture-note"" hidden>Tensile-test elongation at fracture A is not a cracking limit for this bend.</p>" & vbLf
     html = html & "<p class=""note"">The estimate uses the radius at maximum cosine curvature in the simplified bending model <var>t</var>/(2<var>R</var>). This is not a crack prediction or material approval.</p>" & vbLf
     html = html & "</section>" & vbLf
     html = html & "<details>" & vbLf
@@ -478,7 +543,7 @@ Function WResultTemplate()
     html = html & "<script id=""result-data"" type=""application/json"">{{DATA}}</script>" & vbLf
     html = html & "<script>" & vbLf
     html = html & "'use strict';" & vbLf
-    html = html & "const {l1, l2, thickness, values, fit} = JSON.parse(document.getElementById('result-data').textContent);" & vbLf
+    html = html & "const {l1, l2, thickness, values, fit, elongationAtFracture = null} = JSON.parse(document.getElementById('result-data').textContent);" & vbLf
     html = html & "const [amplitude, radius, height, angle] = values;" & vbLf
     html = html & "const curvatureRadius = values[11], curvatureStrain = values[14];" & vbLf
     html = html & "const format = new Intl.NumberFormat('en-GB', {minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false});" & vbLf
@@ -521,6 +586,11 @@ Function WResultTemplate()
     html = html & "document.getElementById('curvature-radius').textContent = curvatureRadius === null" & vbLf
     html = html & "  ? 'Unbounded (flat cosine)' : curvatureValue(curvatureRadius, 'mm');" & vbLf
     html = html & "document.getElementById('curvature-strain').textContent = curvatureValue(curvatureStrain, '%');" & vbLf
+    html = html & "if (elongationAtFracture !== null) {" & vbLf
+    html = html & "  document.getElementById('a-reference-value').textContent = curvatureValue(elongationAtFracture, '%');" & vbLf
+    html = html & "  document.getElementById('fracture-reference').hidden = false;" & vbLf
+    html = html & "  document.getElementById('fracture-note').hidden = false;" & vbLf
+    html = html & "}" & vbLf
     html = html & "const canvas = document.getElementById('profile');" & vbLf
     html = html & "const ctx = canvas.getContext('2d');" & vbLf
     html = html & "const scale = Math.min(650 / l2, 224 / Math.max(height, 2 * amplitude, l2 * .01));" & vbLf
@@ -630,4 +700,107 @@ Function WResultTemplate()
     html = html & "</body>" & vbLf
     html = html & "</html>" & vbLf
     WResultTemplate = html
+End Function
+
+Function WInputFormScript()
+    Dim html
+    html = ""
+    html = html & "# Embedded in the standalone CATScript. All values and generated output stay local." & vbLf
+    html = html & "$ErrorActionPreference = 'Stop'" & vbLf
+    html = html & "Add-Type -AssemblyName System.Windows.Forms" & vbLf
+    html = html & "Add-Type -AssemblyName System.Drawing" & vbLf
+    html = html & "[System.Windows.Forms.Application]::EnableVisualStyles()" & vbLf
+    html = html & "$form = New-Object System.Windows.Forms.Form" & vbLf
+    html = html & "$form.Text = 'Wrinkle Geometry - Input'" & vbLf
+    html = html & "$form.ClientSize = New-Object System.Drawing.Size -ArgumentList 510, 252" & vbLf
+    html = html & "$form.AutoScaleMode = 'Dpi'" & vbLf
+    html = html & "$form.FormBorderStyle = 'FixedDialog'" & vbLf
+    html = html & "$form.StartPosition = 'CenterScreen'" & vbLf
+    html = html & "$form.MaximizeBox = $false" & vbLf
+    html = html & "$form.MinimizeBox = $false" & vbLf
+    html = html & "$form.TopMost = $true" & vbLf
+    html = html & "" & vbLf
+    html = html & "function Add-Label($text, $x, $y, $width, $height) {" & vbLf
+    html = html & "    $label = New-Object System.Windows.Forms.Label" & vbLf
+    html = html & "    $label.Text = $text" & vbLf
+    html = html & "    $label.SetBounds($x, $y, $width, $height)" & vbLf
+    html = html & "    $form.Controls.Add($label)" & vbLf
+    html = html & "    return $label" & vbLf
+    html = html & "}" & vbLf
+    html = html & "" & vbLf
+    html = html & "$labels = @('Undeformed wall length l1 [mm]'," & vbLf
+    html = html & "            'Deformed wall length l2 (neutral fibre) [mm]'," & vbLf
+    html = html & "            'Wall thickness [mm] (optional)'," & vbLf
+    html = html & "            'Elongation at fracture A [%] (optional)')" & vbLf
+    html = html & "$defaults = @('40', '30', '2', '')" & vbLf
+    html = html & "$entries = @(" & vbLf
+    html = html & "    for ($i = 0; $i -lt $labels.Count; $i++) {" & vbLf
+    html = html & "        $y = 15 + 34 * $i" & vbLf
+    html = html & "        $null = Add-Label $labels[$i] 14 ($y + 3) 330 25" & vbLf
+    html = html & "        $entry = New-Object System.Windows.Forms.TextBox" & vbLf
+    html = html & "        $entry.Name = ""Input$i""" & vbLf
+    html = html & "        $entry.AccessibleName = $labels[$i]" & vbLf
+    html = html & "        $entry.Text = $defaults[$i]" & vbLf
+    html = html & "        $entry.MaxLength = 32" & vbLf
+    html = html & "        $entry.SetBounds(350, $y, 145, 25)" & vbLf
+    html = html & "        $entry.TabIndex = $i" & vbLf
+    html = html & "        $form.Controls.Add($entry)" & vbLf
+    html = html & "        $entry" & vbLf
+    html = html & "    }" & vbLf
+    html = html & ")" & vbLf
+    html = html & "$null = Add-Label 'Use a decimal point or comma. Leave optional fields blank if not provided.' 14 151 481 24" & vbLf
+    html = html & "$errorLabel = Add-Label '' 14 174 481 38" & vbLf
+    html = html & "$errorLabel.ForeColor = [System.Drawing.Color]::DarkRed" & vbLf
+    html = html & "$calculate = New-Object System.Windows.Forms.Button" & vbLf
+    html = html & "$calculate.Text = 'Calculate'" & vbLf
+    html = html & "$calculate.SetBounds(295, 214, 95, 27)" & vbLf
+    html = html & "$calculate.TabIndex = $entries.Count" & vbLf
+    html = html & "$form.Controls.Add($calculate)" & vbLf
+    html = html & "$form.AcceptButton = $calculate" & vbLf
+    html = html & "$cancel = New-Object System.Windows.Forms.Button" & vbLf
+    html = html & "$cancel.Text = 'Cancel'" & vbLf
+    html = html & "$cancel.SetBounds(400, 214, 95, 27)" & vbLf
+    html = html & "$cancel.TabIndex = $entries.Count + 1" & vbLf
+    html = html & "$cancel.DialogResult = 'Cancel'" & vbLf
+    html = html & "$form.Controls.Add($cancel)" & vbLf
+    html = html & "$form.CancelButton = $cancel" & vbLf
+    html = html & "" & vbLf
+    html = html & "function Read-Value($control, $minimum, $optional, $name, $unit) {" & vbLf
+    html = html & "    $value = $control.Text.Trim()" & vbLf
+    html = html & "    if ($optional -and $value.Length -eq 0) { return $null }" & vbLf
+    html = html & "    if ($value -notmatch '^[+-]?[0-9]+([.,][0-9]+)?$') {" & vbLf
+    html = html & "        throw ""Enter $name as a decimal number without grouping.""" & vbLf
+    html = html & "    }" & vbLf
+    html = html & "    $number = [double]::Parse($value.Replace(',', '.'), [Globalization.CultureInfo]::InvariantCulture)" & vbLf
+    html = html & "    if ($number -lt $minimum -or $number -gt 1000000) {" & vbLf
+    html = html & "        throw ""$name must be between $minimum and 1000000 $unit.""" & vbLf
+    html = html & "    }" & vbLf
+    html = html & "    return $number" & vbLf
+    html = html & "}" & vbLf
+    html = html & "" & vbLf
+    html = html & "$calculate.Add_Click({" & vbLf
+    html = html & "    try {" & vbLf
+    html = html & "        $l1 = Read-Value $entries[0] 0.001 $false 'l1' 'mm'" & vbLf
+    html = html & "        $l2 = Read-Value $entries[1] 0.001 $false 'l2' 'mm'" & vbLf
+    html = html & "        $null = Read-Value $entries[2] 0 $true 'wall thickness' 'mm'" & vbLf
+    html = html & "        $null = Read-Value $entries[3] 0 $true 'elongation at fracture A' '%'" & vbLf
+    html = html & "        if ($l1 -lt $l2 -or $l1 -gt 2 * $l2) {" & vbLf
+    html = html & "            throw 'Lengths must satisfy l2 <= l1 <= 2*l2.'" & vbLf
+    html = html & "        }" & vbLf
+    html = html & "        $values = @($entries | ForEach-Object { $_.Text.Trim() })" & vbLf
+    html = html & "        $resultPath = Join-Path $PSScriptRoot 'values.txt'" & vbLf
+    html = html & "        [IO.File]::WriteAllText($resultPath, ($values -join ';'), [Text.Encoding]::ASCII)" & vbLf
+    html = html & "        $form.DialogResult = 'OK'" & vbLf
+    html = html & "    } catch {" & vbLf
+    html = html & "        $errorLabel.Text = $_.Exception.Message" & vbLf
+    html = html & "    }" & vbLf
+    html = html & "})" & vbLf
+    html = html & "" & vbLf
+    html = html & "try {" & vbLf
+    html = html & "    if ($form.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { exit 0 }" & vbLf
+    html = html & "    exit 2" & vbLf
+    html = html & "} finally {" & vbLf
+    html = html & "    $form.Dispose()" & vbLf
+    html = html & "}" & vbLf
+    WInputFormScript = html
 End Function

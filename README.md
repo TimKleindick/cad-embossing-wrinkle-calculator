@@ -8,7 +8,11 @@ report runs offline.
   Python journal. Enter your values in its Windows dialog and select **Calculate**.
 - In CATIA, run
   [CATIA_WrinkleCalculator.CATScript](ready-to-run/CATIA_WrinkleCalculator.CATScript)
-  from a **Directories** macro library. Follow the native input prompts.
+  from a **Directories** macro library. Enter the dimensions in one Windows form.
+  If Windows PowerShell is blocked, enter all values in a single native prompt.
+
+Both windows accept l1, l2, wall thickness, and optional elongation at fracture A [%].
+A is a report-only tensile-test reference, not a cracking limit.
 
 Each startup file contains its calculation core and the report template. NX keeps a copy
 of the results in the dialog. CATIA shows text results if the browser report cannot

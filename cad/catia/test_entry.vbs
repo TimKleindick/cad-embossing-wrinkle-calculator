@@ -1,28 +1,22 @@
 ' This harness runs the actual generated macro orchestration, with controlled IO.
 Class FixtureDialogs
-    Public answers, position, thicknessChoice, prompts, outputs, errorText, illustrated, reportData
+    Public answer, inputCalls, outputs, errorText, illustrated, reportData
     Private Sub Class_Initialize()
-        position=0
-        prompts=""
+        inputCalls=0
         outputs=""
         errorText=""
-        thicknessChoice=7
         illustrated=False
         reportData=""
     End Sub
-    Public Function Ask(ByVal prompt,ByVal initial)
-        prompts=prompts & prompt & vbCrLf
-        Ask=answers(position)
-        position=position+1
-    End Function
-    Public Function ConfirmThickness()
-        ConfirmThickness=thicknessChoice
+    Public Function ReadInputs()
+        inputCalls=inputCalls+1
+        ReadInputs=answer
     End Function
     Public Sub ShowResult(ByVal text)
         outputs=outputs & text & vbCrLf
     End Sub
-    Public Function ShowIllustrated(ByRef values, ByVal l1, ByVal l2, ByVal thickness)
-        reportData = WResultData(values, l1, l2, thickness)
+    Public Function ShowIllustrated(ByRef values, ByVal l1, ByVal l2, ByVal thickness, ByVal fractureElongation)
+        reportData = WResultData(values, l1, l2, thickness, fractureElongation)
         ShowIllustrated = illustrated
     End Function
     Public Sub ShowError(ByVal text)
@@ -55,12 +49,10 @@ For Each localeId In Array(1033,1031)
         Assert caught<>0,"invalid decimal " & sample
     Next
     Set fake=New FixtureDialogs
-    fake.answers=Array("40","30","2")
-    fake.thicknessChoice=6
+    fake.answer="40;30;2;"
     success=WrinkleRun(fake)
     Assert success And fake.errorText="","successful entry workflow"
-    Assert InStr(fake.prompts,"Undeformed wall length l1")>0,"l1 input label"
-    Assert InStr(fake.prompts,"Deformed wall length l2 (neutral fibre, horizontal endpoint span)")>0,"l2 input label"
+    Assert fake.inputCalls=1,"all dimensions requested together exactly once"
     If localeId=1033 Then
         exactRadius="3.71 mm": exactStrain="26.93 %": zeroStrain="0.00 %"
     Else
@@ -74,8 +66,7 @@ For Each localeId In Array(1033,1031)
     Assert InStr(fake.outputs,"cosine amplitude")=0 And InStr(fake.outputs,"Straight length")=0,"omit A and s"
     Assert InStr(fake.outputs,"Maximum vertical deviation")=0 And InStr(fake.outputs,"Corrected cosine")=0,"omit diagnostics"
     Set fake=New FixtureDialogs
-    fake.answers=Array("0.002","0.001","0.000000001")
-    fake.thicknessChoice=6
+    fake.answer="0.002;0.001;0.000000001;"
     success=WrinkleRun(fake)
     Assert success,"small positive radius and strain"
     If localeId=1033 Then
@@ -84,42 +75,40 @@ For Each localeId In Array(1033,1031)
         Call AssertCosineText(fake.outputs,"6,12e-5 mm","8,17e-4 %")
     End If
     Set fake=New FixtureDialogs
-    fake.answers=Array("40","30","2,5")
-    fake.thicknessChoice=6
+    fake.answer="40;30;2,5;24,5"
     fake.illustrated=True
     success=WrinkleRun(fake)
     Assert success And fake.outputs="" And fake.errorText="","illustrated report instead of text fallback"
-    Assert InStr(fake.reportData,"{""l1"":40,""l2"":30,""thickness"":2.5,")=1,"report input values and JSON decimal"
+    Assert InStr(fake.reportData,"{""l1"":40,""l2"":30,""thickness"":2.5,""elongationAtFracture"":24.5,")=1,"report input values and JSON decimal"
     Assert InStr(fake.reportData,"""fit"":[0,")>0,"fitted curve starts at zero"
     Assert Right(fake.reportData,4)=",0]}","fitted curve ends at zero"
     Set fake=New FixtureDialogs
-    fake.answers=Array("30","30")
+    fake.answer="40;30;2;24,5"
+    success=WrinkleRun(fake)
+    Assert success,"reference value accepted without affecting geometry"
+    Assert InStr(fake.outputs,"Elongation at fracture A: ")>0 And InStr(fake.outputs,"not a cracking limit")>0,"reference caveat"
+    Call AssertCosineText(fake.outputs,exactRadius,exactStrain)
+    Set fake=New FixtureDialogs
+    fake.answer="30;30;;"
     success=WrinkleRun(fake)
     Assert success And InStr(fake.outputs,"Not applicable")>0,"flat and thickness disabled"
     Call AssertCosineText(fake.outputs,flatRadius,missingStrain)
     Assert InStr(fake.reportData,"""thickness"":null,""values"":[0,null,0,0,15,")>0,"flat report values and missing radius"
     Set fake=New FixtureDialogs
-    fake.answers=Array("30","30","2")
-    fake.thicknessChoice=6
+    fake.answer="30;30;2;"
     success=WrinkleRun(fake)
     Assert success,"flat with thickness"
     Call AssertCosineText(fake.outputs,flatRadius,zeroStrain)
-    For Each sample In Array(Array("","30"),Array("40",""),Array("40","30",""))
+    For Each sample In Array(Empty, "", " ")
         Set fake=New FixtureDialogs
-        fake.answers=sample
-        If UBound(sample)=2 Then fake.thicknessChoice=6
+        fake.answer=sample
         success=WrinkleRun(fake)
         Assert Not success And fake.outputs="" And fake.reportData="" And fake.errorText="","empty/cancel aborts cleanly"
+        Assert fake.inputCalls=1,"cancel does not reopen the input window"
     Next
-    Set fake=New FixtureDialogs
-    fake.answers=Array("40","30")
-    fake.thicknessChoice=2
-    success=WrinkleRun(fake)
-    Assert Not success And fake.outputs="","confirmation cancel"
-    For Each sample In Array(Array("29","30"),Array("text","30"),Array("40","30","-1"))
+    For Each sample In Array("29;30;;", "text;30;;", "40;30;-1;", "40;30", "40;30;2;extra", ";30;2;", "40;;2;", "40;30;2;-1")
         Set fake=New FixtureDialogs
-        fake.answers=sample
-        If UBound(sample)=2 Then fake.thicknessChoice=6
+        fake.answer=sample
         success=WrinkleRun(fake)
         Assert Not success And fake.outputs="" And fake.errorText<>"","invalid input must not show success"
     Next

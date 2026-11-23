@@ -27,8 +27,8 @@ class EntryTests(unittest.TestCase):
         data=ui.dialog_template()
         import struct
         self.assertGreater(len(data),300)
-        self.assertEqual(struct.unpack_from('<H',data,8)[0],11)
-        for label in ['Undeformed wall length l1 [mm]', 'Deformed wall length l2 (neutral fibre) [mm]', 'Calculate', 'Close']:
+        self.assertEqual(struct.unpack_from('<H',data,8)[0],13)
+        for label in ['Undeformed wall length l1 [mm]', 'Deformed wall length l2 (neutral fibre) [mm]', 'Elongation at fracture A [%] (optional)', 'Calculate', 'Close']:
             self.assertIn(label.encode('utf-16-le'),data)
 
     def test_generated_nx_journal_is_standalone_and_matches_reference(self):
@@ -51,6 +51,21 @@ class EntryTests(unittest.TestCase):
         self.assertEqual(source.splitlines()[0], 'Option Explicit')
         self.assertNotRegex(source, r'(?im)^\s*Language\s*=')
         self.assertEqual((ROOT / path).read_bytes(), source.encode('ascii'))
+
+    def test_catscript_embeds_one_local_form_and_a_one_box_fallback(self):
+        from tools.build_entries import generated_sources
+
+        script = generated_sources(ROOT)['ready-to-run/CATIA_WrinkleCalculator.CATScript'].decode('ascii')
+        self.assertIn('Function WInputFormScript()', script)
+        self.assertIn('Add-Type -AssemblyName System.Windows.Forms', script)
+        self.assertIn('Undeformed wall length l1 [mm]', script)
+        self.assertIn('Deformed wall length l2 (neutral fibre) [mm]', script)
+        self.assertIn('Wall thickness [mm]', script)
+        self.assertIn('Elongation at fracture A [%] (optional)', script)
+        self.assertNotIn('ConfirmThickness', script)
+        self.assertEqual(script.lower().count('inputbox('), 1)
+        self.assertIn('-NoProfile -NonInteractive -STA -File', script)
+        self.assertNotRegex(script, r'(?i)-executionpolicy|-encodedcommand|mshta')
 
     def test_standalone_catscript_contains_the_complete_result_template(self):
         from tools.build_entries import generated_sources
@@ -176,6 +191,30 @@ if (radius !== null) {
             check_generated(root,expected)
             p=root/'ready-to-run/NX_WrinkleCalculator.py';p.write_bytes(p.read_bytes()+b'\n# stale')
             with self.assertRaises(ValueError): check_generated(root,expected)
+
+    def test_elongation_at_fracture_is_optional_reference_not_geometry(self):
+        import json
+        import re
+
+        source = runpy.run_path(str(ROOT / 'ready-to-run/NX_WrinkleCalculator.py'))
+        value = source['parse_elongation_at_fracture'](' 24,5 ')
+        self.assertEqual(value, 24.5)
+        self.assertIsNone(source['parse_elongation_at_fracture'](' '))
+        with self.assertRaises(ValueError):
+            source['parse_elongation_at_fracture']('-1')
+        result = source['calculate'](40, 30, 2)
+        usual = source['format_report'](result, 2)
+        reference = source['format_report'](result, 2, value)
+        self.assertNotIn('Elongation at fracture A', usual)
+        self.assertIn('Elongation at fracture A: 24.50 %', reference)
+        self.assertIn('not a cracking limit', reference)
+        self.assertIn('outer-fibre strain = 26.93 %', reference)
+        def read_payload(html):
+            return json.loads(re.search(r'id="result-data" type="application/json">([^<]+)', html).group(1))
+        without = read_payload(source['render_illustrated_report'](result, 2))
+        with_reference = read_payload(source['render_illustrated_report'](result, 2, value))
+        self.assertEqual(with_reference.pop('elongationAtFracture'), 24.5)
+        self.assertEqual(with_reference, without)
 
     def test_standalone_nx_text_shows_only_cosine_curvature_estimate(self):
         source = runpy.run_path(str(ROOT / 'ready-to-run/NX_WrinkleCalculator.py'))

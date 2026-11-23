@@ -56,7 +56,10 @@ The dimension values are listed in the table.
 <tr><th scope="row">Wall thickness</th><td class="value" id="wall-thickness"></td></tr>
 <tr><th scope="row">Minimum cosine radius (neutral fibre)</th><td class="value" id="curvature-radius"></td></tr>
 <tr><th scope="row">Estimated outer-fibre bending strain</th><td class="value" id="curvature-strain"></td></tr>
+</tbody><tbody id="fracture-reference" hidden>
+<tr><th scope="row">Elongation at fracture A (reference only)</th><td class="value" id="a-reference-value"></td></tr>
 </tbody></table>
+<p class="note" id="fracture-note" hidden>Tensile-test elongation at fracture A is not a cracking limit for this bend.</p>
 <p class="note">The estimate uses the radius at maximum cosine curvature in the simplified bending model <var>t</var>/(2<var>R</var>). This is not a crack prediction or material approval.</p>
 </section>
 <details>
@@ -71,7 +74,7 @@ The dimension values are listed in the table.
 <script id="result-data" type="application/json">{{DATA}}</script>
 <script>
 'use strict';
-const {l1, l2, thickness, values, fit} = JSON.parse(document.getElementById('result-data').textContent);
+const {l1, l2, thickness, values, fit, elongationAtFracture = null} = JSON.parse(document.getElementById('result-data').textContent);
 const [amplitude, radius, height, angle] = values;
 const curvatureRadius = values[11], curvatureStrain = values[14];
 const format = new Intl.NumberFormat('en-GB', {minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false});
@@ -114,6 +117,11 @@ document.getElementById('wall-thickness').textContent = withUnit(thickness, 'mm'
 document.getElementById('curvature-radius').textContent = curvatureRadius === null
   ? 'Unbounded (flat cosine)' : curvatureValue(curvatureRadius, 'mm');
 document.getElementById('curvature-strain').textContent = curvatureValue(curvatureStrain, '%');
+if (elongationAtFracture !== null) {
+  document.getElementById('a-reference-value').textContent = curvatureValue(elongationAtFracture, '%');
+  document.getElementById('fracture-reference').hidden = false;
+  document.getElementById('fracture-note').hidden = false;
+}
 const canvas = document.getElementById('profile');
 const ctx = canvas.getContext('2d');
 const scale = Math.min(650 / l2, 224 / Math.max(height, 2 * amplitude, l2 * .01));

@@ -238,7 +238,10 @@ REPORT_TEMPLATE = (
     '<tr><th scope="row">Wall thickness</th><td class="value" id="wall-thickness"></td></tr>\n'
     '<tr><th scope="row">Minimum cosine radius (neutral fibre)</th><td class="value" id="curvature-radius"></td></tr>\n'
     '<tr><th scope="row">Estimated outer-fibre bending strain</th><td class="value" id="curvature-strain"></td></tr>\n'
+    '</tbody><tbody id="fracture-reference" hidden>\n'
+    '<tr><th scope="row">Elongation at fracture A (reference only)</th><td class="value" id="a-reference-value"></td></tr>\n'
     '</tbody></table>\n'
+    '<p class="note" id="fracture-note" hidden>Tensile-test elongation at fracture A is not a cracking limit for this bend.</p>\n'
     '<p class="note">The estimate uses the radius at maximum cosine curvature in the simplified bending model <var>t</var>/(2<var>R</var>). This is not a crack prediction or material approval.</p>\n'
     '</section>\n'
     '<details>\n'
@@ -253,7 +256,7 @@ REPORT_TEMPLATE = (
     '<script id="result-data" type="application/json">{{DATA}}</script>\n'
     '<script>\n'
     "'use strict';\n"
-    "const {l1, l2, thickness, values, fit} = JSON.parse(document.getElementById('result-data').textContent);\n"
+    "const {l1, l2, thickness, values, fit, elongationAtFracture = null} = JSON.parse(document.getElementById('result-data').textContent);\n"
     'const [amplitude, radius, height, angle] = values;\n'
     'const curvatureRadius = values[11], curvatureStrain = values[14];\n'
     "const format = new Intl.NumberFormat('en-GB', {minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false});\n"
@@ -296,6 +299,11 @@ REPORT_TEMPLATE = (
     "document.getElementById('curvature-radius').textContent = curvatureRadius === null\n"
     "  ? 'Unbounded (flat cosine)' : curvatureValue(curvatureRadius, 'mm');\n"
     "document.getElementById('curvature-strain').textContent = curvatureValue(curvatureStrain, '%');\n"
+    'if (elongationAtFracture !== null) {\n'
+    "  document.getElementById('a-reference-value').textContent = curvatureValue(elongationAtFracture, '%');\n"
+    "  document.getElementById('fracture-reference').hidden = false;\n"
+    "  document.getElementById('fracture-note').hidden = false;\n"
+    '}\n'
     "const canvas = document.getElementById('profile');\n"
     "const ctx = canvas.getContext('2d');\n"
     'const scale = Math.min(650 / l2, 224 / Math.max(height, 2 * amplitude, l2 * .01));\n'
@@ -429,6 +437,16 @@ def parse_decimal(text):
     return float(text.replace(',','.'))
 
 
+def parse_elongation_at_fracture(text):
+    """Report-only percentage; blank does not change the geometry or strain."""
+    if not text.strip():
+        return None
+    value = parse_decimal(text)
+    if value < 0 or value > 1_000_000:
+        raise ValueError('Elongation at fracture A must be between 0 and 1000000 %.')
+    return value
+
+
 def _cosine_number(value, unit):
     if 0 < value < .01:
         mantissa, exponent = f'{value:.2e}'.split('e')
@@ -436,7 +454,7 @@ def _cosine_number(value, unit):
     return f'{value:.2f} {unit}'
 
 
-def format_report(result, thickness=None):
+def format_report(result, thickness=None, fracture_elongation=None):
     fields = (
         ('Undeformed wall length l1 [mm]', result['l1_mm']),
         ('Deformed wall length l2 (neutral fibre) [mm]', result['l2_mm']),
@@ -455,11 +473,13 @@ def format_report(result, thickness=None):
     radius_text = 'unbounded (flat cosine)' if radius is None else _cosine_number(radius, 'mm')
     strain_text = 'not calculated (no thickness)' if strain is None else _cosine_number(strain, '%')
     lines.append(f'Cosine curvature: R = {radius_text}, outer-fibre strain = {strain_text}')
+    if fracture_elongation is not None:
+        lines.append(f'Elongation at fracture A: {fracture_elongation:.2f} % (reference; not a cracking limit)')
     lines.append('The cosine bending estimate is not a crack prediction or material approval.')
     return '\r\n'.join(lines)
 
 
-def render_illustrated_report(result, thickness):
+def render_illustrated_report(result, thickness, fracture_elongation=None):
     """Use the result-data schema shared with the CATScript launcher."""
     fields = (
         'amplitude_mm', 'radius_mm', 'height_mm', 'phi_deg', 'straight_mm',
@@ -479,24 +499,26 @@ def render_illustrated_report(result, thickness):
         'l1': result['l1_mm'], 'l2': span, 'thickness': thickness,
         'values': [result[field] for field in fields], 'fit': fit,
     }
+    if fracture_elongation is not None:
+        data['elongationAtFracture'] = fracture_elongation
     return REPORT_TEMPLATE.replace('{{DATA}}', json.dumps(data, allow_nan=False))
 
 
-def open_illustrated_report(result, thickness, opener=None):
+def open_illustrated_report(result, thickness, opener=None, *, fracture_elongation=None):
     open_file = opener if opener is not None else getattr(os, 'startfile', None)
     if open_file is None:
         raise OSError('No Windows file opener is available.')
     with tempfile.NamedTemporaryFile(mode='w', encoding='ascii', prefix='Wrinkle-geometry-',
                                      suffix='.html', delete=False) as report:
-        report.write(render_illustrated_report(result, thickness))
+        report.write(render_illustrated_report(result, thickness, fracture_elongation))
     open_file(report.name)
 
 
 def dialog_template():
-    """Standard DLGTEMPLATE + 11 actual controls; DWORD aligned as Win32 requires."""
+    """Standard DLGTEMPLATE + 13 actual controls; DWORD aligned as Win32 requires."""
     def wide(text): return (text+'\0').encode('utf-16-le')
     style=0x80000000|0x00c00000|0x00080000|0x40|0x80|0x800
-    data=struct.pack('<IIHhhhh',style,0,11,0,0,468,332)
+    data=struct.pack('<IIHhhhh',style,0,13,0,0,468,356)
     data+=b'\0\0\0\0'+wide(WINDOW_TITLE)+struct.pack('<H',9)+wide('Segoe UI')
     child=0x50000000
     tab=0x10000
@@ -509,10 +531,12 @@ def dialog_template():
         (104,0x80,'Estimate strain from wall thickness',12,60,250,14,tab|3,0),
         (10003,0x82,'Wall thickness [mm]',12,84,187,14,0,0),
         (103,0x81,'2',204,82,90,16,tab|0x80,0x200),
+        (10005,0x82,'Elongation at fracture A [%] (optional)',12,108,187,14,0,0),
+        (105,0x81,'',204,106,90,16,tab|0x80,0x200),
         (1,0x80,'Calculate',304,10,68,20,tab|1,0),
         (2,0x80,'Close',382,10,72,20,tab,0),
-        (10004,0x82,'SOURCE PREVIEW - NX runtime and installation untested',12,110,440,14,0,0),
-        (201,0x81,'Calculate opens the illustrated report. Use a decimal point or comma.',12,132,442,186,
+        (10004,0x82,'SOURCE PREVIEW - NX runtime and installation untested',12,134,440,14,0,0),
+        (201,0x81,'Calculate opens the illustrated report. Use a decimal point or comma.',12,156,442,186,
          tab|0x4|0x40|0x800|0x200000|0x100000|0x80,0x200),
     ]
     for ident,atom,text,x,y,w,h,flags,extended in controls:
@@ -542,10 +566,10 @@ def run_dialog(owner=None, open_file=None):
     kernel.GetModuleHandleW.argtypes=[w.LPCWSTR];kernel.GetModuleHandleW.restype=w.HMODULE
     failures=[]
 
-    def read(hwnd,ident):
+    def read_text(hwnd,ident):
         text=ctypes.create_unicode_buffer(256)
         user.GetDlgItemTextW(hwnd,ident,text,len(text))
-        return parse_decimal(text.value)
+        return text.value
 
     @callback_type
     def callback(hwnd,message,wp,lp):
@@ -557,14 +581,16 @@ def run_dialog(owner=None, open_file=None):
                 return 1
             if message==0x111 and (wp&0xffff)==1:  # IDOK: calculate, keep dialog open
                 try:
-                    thickness=read(hwnd,103) if user.IsDlgButtonChecked(hwnd,104)==1 else None
-                    result=calculate(read(hwnd,101),read(hwnd,102),thickness)
+                    thickness=parse_decimal(read_text(hwnd,103)) if user.IsDlgButtonChecked(hwnd,104)==1 else None
+                    fracture_elongation = parse_elongation_at_fracture(read_text(hwnd,105))
+                    result=calculate(parse_decimal(read_text(hwnd,101)),parse_decimal(read_text(hwnd,102)),thickness)
                 except (ValueError,ArithmeticError) as exc:
                     text='Error: '+str(exc)+'\r\nNo result.'
                 else:
-                    text=format_report(result, thickness)
+                    text=format_report(result, thickness, fracture_elongation)
                     try:
-                        open_illustrated_report(result, thickness, opener=open_file)
+                        open_illustrated_report(result, thickness, opener=open_file,
+                                                fracture_elongation=fracture_elongation)
                     except (OSError, NotImplementedError):
                         text+='\r\nCould not open the illustrated report. Results are shown above.'
                 user.SetDlgItemTextW(hwnd,201,text)

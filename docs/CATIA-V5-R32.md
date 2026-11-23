@@ -2,9 +2,9 @@
 
 ## What you need
 
-Use **`ready-to-run/CATIA_WrinkleCalculator.CATScript`** on a Windows workstation with CATIA V5 R32, a working VBScript engine, and permission to run macros. The standalone file includes the calculation core, native input prompts, and the illustrated report. It runs without a CATVBA project, UserForm, Excel installation, or Python. For a designer-built interface, see the [optional UserForm guide](CATIA-V5-R32-UserForm-optional.md).
+Use **`ready-to-run/CATIA_WrinkleCalculator.CATScript`** on a Windows workstation with CATIA V5 R32, a working VBScript engine, and permission to run macros. The standalone file includes the calculation core, one input form, and the illustrated report. It runs without a CATVBA project, UserForm, Excel installation, or Python. For a designer-built interface, see the [optional UserForm guide](CATIA-V5-R32-UserForm-optional.md).
 
-The report uses the Windows default browser and the Windows components `Scripting.FileSystemObject` and `Shell.Application`. If creating or opening the report fails, the macro shows text results. Windows CI checks the macro source and calculation through Windows Script Host. The macro's registration, dialogs, report launch, licensing and installation in CATIA V5 R32 still need workstation verification.
+The input form uses Windows PowerShell and .NET Windows Forms without changing execution policy. If it cannot start, the macro falls back to one CATScript input box. The report uses the Windows default browser and the Windows components `Scripting.FileSystemObject` and `Shell.Application`. If creating or opening the report fails, the macro shows text results. Windows CI checks the macro source and calculation through Windows Script Host and exercises the form outside CATIA. The macro's registration, dialogs, report launch, licensing and installation in CATIA V5 R32 still need workstation verification.
 
 Microsoft lists VBScript as deprecated and available as a Windows Feature on Demand. If the engine is missing or macros are blocked, check the supported CATIA and Windows configuration with IT. [Microsoft VBScript status](https://learn.microsoft.com/en-us/windows/whats-new/deprecated-features-resources)
 
@@ -23,14 +23,14 @@ A source preview ZIP built with the repository's packaging tool also contains th
 2. Choose **Tools > Macro > Macros**, then **Macro libraries**.
 3. Set **Library type** to **Directories**, choose **Add existing library**, and select the extracted **`ready-to-run`** folder or the local folder where you saved the raw macro. Confirm with **OK**.
 4. Select **Close** to return to the macro list. If prompted, select the directory library you just added.
-5. Select **`CATIA_WrinkleCalculator`** or the full **`.CATScript`** file name and choose **Run**. CATIA calls `CATMain` and opens the first input box for `l1`.
+5. Select **`CATIA_WrinkleCalculator`** or the full **`.CATScript`** file name and choose **Run**. CATIA calls `CATMain` and opens a single input window.
 
 Add the directory once and reuse it from the macro dialog. Check whether your R32 configuration retains the library after restart. The menu labels and directory library workflow are documented for older V5 releases. Confirm the exact menu and behavior in your installed version.
 
 ## 3. Check the illustrated results
 
 1. Enter `40` for **Undeformed wall length l1** and `30` for **Deformed wall length l2 (neutral fibre)**. The calculator uses `l1` as the target length along the cosine and `l2` as the horizontal span between the endpoints of the deformed neutral-fibre profile.
-2. Choose **Yes** at **Estimate strain from wall thickness?**, enter `2` for the wall thickness, and confirm. All lengths are in mm. Use a decimal point or comma, with no grouping separators, units, or exponents.
+2. Enter `2` in **Wall thickness**, optionally enter **Elongation at fracture A [%]** (for example `24,5`), and select **Calculate**. Clear the optional thickness field for geometry only. A is a tensile-test reference only, not a cracking limit; it does not change the calculation. Use a decimal point or comma without grouping separators, units, or exponents. If the one-box fallback appears, enter `40;30;2;24,5` or `40;30;;` with both optional values blank.
 3. The Windows default browser opens **Wrinkle geometry**, the same offline English report as NX. The sketch labels the three circular arcs with their common radius. The report HTML remains in the Windows temporary directory. If launch fails, the macro shows text results using the Windows number locale.
 4. Open **More information** to see the length and shape comparison. The first row shows the entered `l1`. The relative length deviation still compares the fitted polyline with `l1`.
 
